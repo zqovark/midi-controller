@@ -7,14 +7,19 @@ internal sealed class BoomBapPreset : IDisposable
     private readonly MidiOutput output;
     private readonly ManualTempoSource tempo = new();
     private readonly DrumEngine drums;
+    private readonly MidiVoices voices;
+    private readonly int[] banks = new int[3];
+    private byte[] previousChord = [];
+    public int[] ActivePads => voices.ActivePads;
+    public byte[] ActiveNotes => voices.ActiveNotes;
     public byte CurrentVelocity => drums.CurrentVelocity;
     public bool IsRepeating => drums.IsRepeating;
     public event Action<Exception>? RepeatFailed;
     private readonly HashSet<GamepadButtons> downButtons = [];
-    private readonly int[] lastCc = [-1, -1];
-    private readonly long[] lastCcTime = new long[2];
+    private readonly int[] lastCc = [-1, -1, -1, -1];
+    private readonly long[] lastCcTime = new long[4];
     public AppSettings Settings { get; private set; }
-    public int ActiveBank { get; private set; }
+    public int ActiveBank => banks[(int)Settings.Mode];
     public event Action? Changed;
     public event Action<string>? CommandSent;
 
@@ -26,6 +31,8 @@ internal sealed class BoomBapPreset : IDisposable
         tempo.Bpm = Settings.RepeatBpm;
         drums = new(output.Send, tempo, background, clock);
         drums.Configure(Settings);
+        voices = new(output.Send, background, clock);
+        voices.Failed += ex => RepeatFailed?.Invoke(ex);
         drums.Failed += ex => RepeatFailed?.Invoke(ex);
     }
 
@@ -42,11 +49,16 @@ internal sealed class BoomBapPreset : IDisposable
             downButtons.Remove(button);
             if (button == GamepadButtons.RightShoulder) drums.Shoulder(false);
             int releasedPad = PadIndex(button);
-            if (releasedPad >= 0) drums.Pad(releasedPad, 0, false);
+            if (releasedPad >= 0)
+            {
+                if (Settings.Mode == MusicalMode.Drum) drums.Pad(releasedPad, 0, false);
+                else if (Settings.Mode == MusicalMode.Chord || Settings.Samples.Playback == SlicePlayback.Gate) voices.Release(releasedPad);
+            }
             return;
         }
         if (!downButtons.Add(button)) return;
-        if (button == GamepadButtons.RightShoulder) { drums.Shoulder(true); return; }
+        if (button == GamepadButtons.RightShoulder)
+        { if (Settings.Mode == MusicalMode.Drum) drums.Shoulder(true); return; }
         switch (button)
         {
             case GamepadButtons.DPadDown: ToggleBank(); return;
@@ -56,6 +68,21 @@ internal sealed class BoomBapPreset : IDisposable
         }
         int pad = PadIndex(button);
         if (!output.IsOpen || pad < 0) return;
+        if (Settings.Mode == MusicalMode.Chord)
+        {
+            var notes = ChordGenerator.Generate(Settings.Chords, ActiveBank * 4 + pad, previousChord);
+            voices.Play(pad, notes, CurrentVelocity); previousChord = notes; return;
+        }
+        if (Settings.Mode == MusicalMode.Sample)
+        {
+            var sample = Settings.Samples;
+            var mapping = sample.Pads[ActiveBank * 4 + pad];
+            if (mapping.Region < 0) return;
+            double duration = sample.Duration(mapping.Region);
+            if (duration <= 0) { CommandSent?.Invoke("Selecione um WAV e exporte os slices antes de tocar."); return; }
+            voices.Play(pad, [(byte)mapping.Note], CurrentVelocity, sample.Playback == SlicePlayback.OneShot ? duration : null);
+            return;
+        }
         byte note = (byte)Settings.Banks[ActiveBank][pad].Note;
         drums.Shoulder(downButtons.Contains(GamepadButtons.RightShoulder));
         drums.Pad(pad, note, true);
@@ -70,7 +97,40 @@ internal sealed class BoomBapPreset : IDisposable
     public void ToggleBank()
     {
         ReleaseNotes();
-        ActiveBank = 1 - ActiveBank;
+        banks[(int)Settings.Mode] = 1 - ActiveBank;
+        Changed?.Invoke();
+    }
+
+    public void SetMode(MusicalMode mode)
+    {
+        if (!Enum.IsDefined(mode)) throw new ArgumentOutOfRangeException(nameof(mode));
+        if (Settings.Mode == mode) return;
+        ReleaseNotes();
+        Settings.Mode = mode;
+        previousChord = [];
+        Array.Fill(lastCc, -1); Array.Clear(lastCcTime);
+        Changed?.Invoke();
+    }
+    public string PadDescription(int pad)
+    {
+        int index = ActiveBank * 4 + pad;
+        return Settings.Mode switch
+        {
+            MusicalMode.Sample => Settings.Samples.Pads[index].Region < 0 ? "Sem região"
+                : $"Slice {Settings.Samples.Pads[index].Region + 1} · {Settings.Samples.Pads[index].Note}",
+            MusicalMode.Chord => $"{Settings.Chords.Pads[index].Name} · {ChordGenerator.Describe(ChordGenerator.Generate(Settings.Chords, index))}",
+            _ => $"{Settings.Banks[ActiveBank][pad].Name} · {Settings.Banks[ActiveBank][pad].Note}"
+        };
+    }
+
+    public void ApplyModeSettings(ChordSettings? chords = null, SampleSettings? samples = null)
+    {
+        chords?.Validate(); samples?.Validate();
+        if (chords is not null && Settings.Mode == MusicalMode.Chord || samples is not null && Settings.Mode == MusicalMode.Sample)
+        { ReleaseNotes(); previousChord = []; }
+        if (chords is not null) Settings.Chords = chords.Copy();
+        if (samples is not null) Settings.Samples = samples.Copy();
+        Array.Fill(lastCc, -1); Array.Clear(lastCcTime);
         Changed?.Invoke();
     }
 
@@ -107,18 +167,36 @@ internal sealed class BoomBapPreset : IDisposable
         CommandSent?.Invoke($"Swing global {Settings.SwingPercent}% enviado · requer script X-MIDI.");
     }
 
-    private void ReleaseNotes() => drums.Stop();
+    private void ReleaseNotes()
+    {
+        try { drums.Stop(); }
+        finally { voices.Stop(); }
+    }
     public void SetTrigger(byte lt) => drums.Trigger(lt);
     public void ConfigureDrums()
     {
         Settings.Validate();
         drums.Configure(Settings);
     }
-    public void Dispose() => drums.Dispose();
+    public void Dispose()
+    {
+        try { drums.Dispose(); }
+        finally { voices.Dispose(); }
+    }
     public void Analog(Gamepad gamepad)
     {
         SetTrigger(gamepad.LeftTrigger);
         if (!output.IsOpen) return;
+        if (Settings.Mode == MusicalMode.Sample)
+        {
+            for (int i = 0; i < Settings.Samples.Effects.Length; i++)
+            {
+                var effect = Settings.Samples.Effects[i];
+                if (effect.Enabled) SendCc(i, (byte)effect.Cc, effect.Stick == 0 ? gamepad.LeftThumbX : gamepad.RightThumbX,
+                    effect.Stick == 0 ? Gamepad.LeftThumbDeadZone : Gamepad.RightThumbDeadZone);
+            }
+            return;
+        }
         SendCc(0, 74, gamepad.LeftThumbX, Gamepad.LeftThumbDeadZone);
         SendCc(1, 91, gamepad.RightThumbX, Gamepad.RightThumbDeadZone);
     }
@@ -140,7 +218,8 @@ internal sealed class BoomBapPreset : IDisposable
     }
     public void Reset()
     {
-        drums.Stop();
+        ReleaseNotes();
+        previousChord = [];
         downButtons.Clear();
         Array.Fill(lastCc, -1);
         Array.Clear(lastCcTime);

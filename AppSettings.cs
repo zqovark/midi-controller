@@ -28,10 +28,14 @@ internal sealed class AppSettings
     public bool NoteRepeatEnabled { get; set; } = true;
     public RepeatDivision RepeatDivision { get; set; } = RepeatDivision.Sixteenth;
     public double RepeatBpm { get; set; } = 120;
+    public MusicalMode Mode { get; set; }
+    public ChordSettings Chords { get; set; } = MusicalPresets.Chord(0);
+    public SampleSettings Samples { get; set; } = new();
     public string? PreferredPort { get; set; }
 
     public AppSettings Copy() => new()
     {
+        Mode = Mode, Chords = Chords.Copy(), Samples = Samples.Copy(),
         Version = Version, Banks = Banks.Select(bank => bank.Select(pad => pad.Copy()).ToArray()).ToArray(),
         SwingPercent = SwingPercent, SwingStep = SwingStep, PreferredPort = PreferredPort,
         DefaultVelocity = DefaultVelocity, MinimumVelocity = MinimumVelocity, VelocityCurve = VelocityCurve,
@@ -40,6 +44,9 @@ internal sealed class AppSettings
 
     public void Validate()
     {
+        if (!Enum.IsDefined(Mode) || Chords is null || Samples is null)
+            throw new InvalidDataException("Modo ou configuração musical inválidos.");
+        Chords.Validate(); Samples.Validate();
         if (DefaultVelocity is < 1 or > 127 || MinimumVelocity < 1 || MinimumVelocity > DefaultVelocity
             || !Enum.IsDefined(VelocityCurve) || !Enum.IsDefined(RepeatDivision)
             || !double.IsFinite(RepeatBpm) || RepeatBpm is < 20 or > 300)

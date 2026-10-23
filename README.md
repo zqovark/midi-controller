@@ -30,3 +30,9 @@ Ative **Note Repeat** e segure **RB + A/B/X/Y**, em qualquer banco. Selecione a 
 O BPM é manual: a conexão atual apenas envia MIDI e não recebe tempo ou posição do FL Studio. A repetição começa no gesto, sem alinhamento de fase à grade ou sincronização com o transporte/swing do FL. O agendamento usa relógio monotônico em uma thread dedicada; latência/jitter reais dependem do Windows e do driver MIDI e requerem validação com hardware.
 
 Testes do motor, sem dispositivos MIDI ou WPF: `dotnet run --project Tests/DrumMode/X-MIDI.DrumMode.Tests.csproj -c Release`.
+
+## Sample / Chord
+
+Selecione o modo ao lado do controle Xbox. Sample Mode oferece waveform, edição de regiões, cortes iguais/manuais/transientes e exportação WAV com reverse/pitch. Chord Mode oferece escalas, progressões de oito acordes, inversões, voicings abertos, presets e notas editáveis por pad. LT e os analógicos continuam disponíveis; RB + instrumento permanece exclusivo do Drum Mode.
+
+Cada modo mantém seus mapeamentos e configurações. Veja o [fluxo de carregamento e vínculos no FL Studio](FL-STUDIO.md#sample-mode-e-chord-mode). Áudio, regiões, instrumentos e efeitos não são carregados automaticamente no FL. O teste portável acima inclui também os modos, os acordes e o processamento WAV; não requer WPF, dispositivos ou FL Studio.

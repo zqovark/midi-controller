@@ -45,8 +45,9 @@ public partial class MainWindow : Window
         {
             midi.Dispose();
             preset.Reset();
-            MidiStatus.Text = $"Note Repeat interrompido: {ex.Message}";
+            MidiStatus.Text = $"Envio MIDI interrompido: {ex.Message}";
         }));
+        ModePanel.Attach(preset, RunCommand);
         UpdateMusicalControls();
         indicators = new()
         {
@@ -129,6 +130,7 @@ public partial class MainWindow : Window
         RTLabel.Text = $"RT {RTBar.Value:0}%";
         VelocityReadout.Text = $"LT {LTBar.Value:0}% · VEL {preset.CurrentVelocity}";
         RepeatReadout.Text = preset.IsRepeating ? "● REPETINDO" : "RB + A/B/X/Y";
+        ModePanel.ShowPerformance(gamepad.Buttons);
     }
 
     private static void UpdateStick(Ellipse puck, short rawX, short rawY, int deadZone, bool pressed, TextBlock label)
@@ -210,14 +212,22 @@ public partial class MainWindow : Window
         try
         {
             BankLabel.Text = $"↓ Banco {preset.ActiveBank + 1}";
-            BankDescription.Text = $"BANCO {preset.ActiveBank + 1} · CANAL 1";
+            BankDescription.Text = $"{preset.Settings.Mode.ToString().ToUpperInvariant()} · BANCO {preset.ActiveBank + 1} · CANAL 1";
+            ModeSelector.SelectedIndex = (int)preset.Settings.Mode;
+            ModeCaption.Text = preset.Settings.Mode switch
+            { MusicalMode.Sample => "Waveform / slices", MusicalMode.Chord => "Acordes / notas MIDI", _ => "Entradas em tempo real" };
+            MappingTitle.Text = preset.Settings.Mode switch
+            { MusicalMode.Sample => "Slices nos pads", MusicalMode.Chord => "Acordes nos pads", _ => "Mapeamento de notas" };
+            DrumRepeatControls.Visibility = preset.Settings.Mode == MusicalMode.Drum ? Visibility.Visible : Visibility.Collapsed;
+            string Effects(int stick) => string.Join(" / ", preset.Settings.Samples.Effects.Where(e => e.Enabled && e.Stick == stick).Select(e => $"{e.Name} CC {e.Cc}"));
+            LeftEffectLabel.Text = preset.Settings.Mode == MusicalMode.Sample ? Effects(0) : "FILTRO · CC 74";
+            RightEffectLabel.Text = preset.Settings.Mode == MusicalMode.Sample ? Effects(1) : "EFEITO · CC 91";
             BankButton.Background = Brush(preset.ActiveBank == 0 ? "#D0BCFF" : "#CCC2DC");
             var labels = new[] { MapA, MapB, MapX, MapY };
             var letters = new[] { "A", "B", "X", "Y" };
             for (int i = 0; i < 4; i++)
             {
-                var pad = preset.Settings.Banks[preset.ActiveBank][i];
-                labels[i].Text = $"{letters[i]} · {pad.Name} · {pad.Note}";
+                labels[i].Text = $"{letters[i]} · {preset.PadDescription(i)}";
                 labels[i].ToolTip = labels[i].Text;
             }
             SwingValue.Text = $"SWING GLOBAL · {preset.Settings.SwingPercent}%";
@@ -232,8 +242,16 @@ public partial class MainWindow : Window
             RepeatDivisionSelector.SelectedIndex = (int)preset.Settings.RepeatDivision;
             BpmSlider.Value = preset.Settings.RepeatBpm;
             UpdateDrumLabels();
+            ModePanel.Refresh();
         }
         finally { updatingMusic = false; }
+    }
+
+    private void ModeSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (updatingMusic || preset is null || ModeSelector.SelectedIndex < 0) return;
+        RunCommand(() => preset.SetMode((MusicalMode)ModeSelector.SelectedIndex));
+        ModePanel.ShowPerformance(GamepadButtons.None);
     }
 
     private void UpdateDrumLabels()
@@ -278,9 +296,20 @@ public partial class MainWindow : Window
 
     private async void ConfigureClicked(object sender, RoutedEventArgs e)
     {
+        if (preset.Settings.Mode != MusicalMode.Drum)
+        {
+            var mapping = new ModeMappingWindow(preset.Settings.Mode == MusicalMode.Chord ? preset.Settings.Chords : null,
+                preset.Settings.Mode == MusicalMode.Sample ? preset.Settings.Samples : null, Resources) { Owner = this };
+            if (mapping.ShowDialog() != true) return;
+            RunCommand(() => preset.ApplyModeSettings(mapping.Chords, mapping.Samples));
+            allowSaving = true; saveTimer.Stop(); await SaveSettingsAsync(); return;
+        }
         var editor = new SettingsWindow(preset.Settings, Resources) { Owner = this };
         if (editor.ShowDialog() != true) return;
         editor.Result.SwingPercent = preset.Settings.SwingPercent;
+        editor.Result.Mode = preset.Settings.Mode;
+        editor.Result.Chords = preset.Settings.Chords.Copy();
+        editor.Result.Samples = preset.Settings.Samples.Copy();
         RunCommand(() => preset.ApplySettings(editor.Result));
         allowSaving = true;
         saveTimer.Stop();

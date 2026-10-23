@@ -6,6 +6,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../SampleAudio.cs" Link="SampleAudio.cs" />
+    <Compile Include="../../ModeSettings.cs" Link="ModeSettings.cs" />
+    <Compile Include="../../ChordGenerator.cs" Link="ChordGenerator.cs" />
+    <Compile Include="../../MidiVoices.cs" Link="MidiVoices.cs" />
     <Compile Include="../../DrumEngine.cs" Link="DrumEngine.cs" />
     <Compile Include="../../AppSettings.cs" Link="AppSettings.cs" />
     <Compile Include="../../BoomBapPreset.cs" Link="BoomBapPreset.cs" />
