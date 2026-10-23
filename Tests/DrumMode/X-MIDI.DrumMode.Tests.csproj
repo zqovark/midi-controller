@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../DrumEngine.cs" Link="DrumEngine.cs" />
+    <Compile Include="../../AppSettings.cs" Link="AppSettings.cs" />
+    <Compile Include="../../BoomBapPreset.cs" Link="BoomBapPreset.cs" />
+    <Compile Include="../../ControllerReader.cs" Link="ControllerReader.cs" />
+    <PackageReference Include="Vortice.XInput" Version="3.8.3" />
+  </ItemGroup>
+</Project>

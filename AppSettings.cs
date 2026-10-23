@@ -22,16 +22,28 @@ internal sealed class AppSettings
     ];
     public int SwingPercent { get; set; }
     public int SwingStep { get; set; } = 5;
+    public int DefaultVelocity { get; set; } = 110;
+    public int MinimumVelocity { get; set; } = 30;
+    public VelocityCurve VelocityCurve { get; set; } = VelocityCurve.Linear;
+    public bool NoteRepeatEnabled { get; set; } = true;
+    public RepeatDivision RepeatDivision { get; set; } = RepeatDivision.Sixteenth;
+    public double RepeatBpm { get; set; } = 120;
     public string? PreferredPort { get; set; }
 
     public AppSettings Copy() => new()
     {
         Version = Version, Banks = Banks.Select(bank => bank.Select(pad => pad.Copy()).ToArray()).ToArray(),
-        SwingPercent = SwingPercent, SwingStep = SwingStep, PreferredPort = PreferredPort
+        SwingPercent = SwingPercent, SwingStep = SwingStep, PreferredPort = PreferredPort,
+        DefaultVelocity = DefaultVelocity, MinimumVelocity = MinimumVelocity, VelocityCurve = VelocityCurve,
+        NoteRepeatEnabled = NoteRepeatEnabled, RepeatDivision = RepeatDivision, RepeatBpm = RepeatBpm
     };
 
     public void Validate()
     {
+        if (DefaultVelocity is < 1 or > 127 || MinimumVelocity < 1 || MinimumVelocity > DefaultVelocity
+            || !Enum.IsDefined(VelocityCurve) || !Enum.IsDefined(RepeatDivision)
+            || !double.IsFinite(RepeatBpm) || RepeatBpm is < 20 or > 300)
+            throw new InvalidDataException("Velocity: 1–127, mínima ≤ padrão; BPM: 20–300; curva e divisão válidas.");
         if (Version != 1 || SwingPercent is < 0 or > 100 || SwingStep is < 1 or > 100
             || Banks is not { Length: 2 } || Banks.Any(bank => bank is not { Length: 4 }
                 || bank.Any(pad => pad is null || string.IsNullOrWhiteSpace(pad.Name)

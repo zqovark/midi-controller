@@ -2,10 +2,14 @@ using Vortice.XInput;
 
 namespace XMidi;
 
-internal sealed class BoomBapPreset
+internal sealed class BoomBapPreset : IDisposable
 {
     private readonly MidiOutput output;
-    private readonly Dictionary<GamepadButtons, byte> heldNotes = [];
+    private readonly ManualTempoSource tempo = new();
+    private readonly DrumEngine drums;
+    public byte CurrentVelocity => drums.CurrentVelocity;
+    public bool IsRepeating => drums.IsRepeating;
+    public event Action<Exception>? RepeatFailed;
     private readonly HashSet<GamepadButtons> downButtons = [];
     private readonly int[] lastCc = [-1, -1];
     private readonly long[] lastCcTime = new long[2];
@@ -14,11 +18,15 @@ internal sealed class BoomBapPreset
     public event Action? Changed;
     public event Action<string>? CommandSent;
 
-    public BoomBapPreset(MidiOutput output, AppSettings? settings = null)
+    public BoomBapPreset(MidiOutput output, AppSettings? settings = null, bool background = true, Func<double>? clock = null)
     {
         this.output = output;
         Settings = settings ?? new();
         Settings.Validate();
+        tempo.Bpm = Settings.RepeatBpm;
+        drums = new(output.Send, tempo, background, clock);
+        drums.Configure(Settings);
+        drums.Failed += ex => RepeatFailed?.Invoke(ex);
     }
 
     // Mantém o mapeamento original do preset Classic como referência.
@@ -32,11 +40,13 @@ internal sealed class BoomBapPreset
         if (!pressed)
         {
             downButtons.Remove(button);
-            if (heldNotes.Remove(button, out byte released) && !heldNotes.ContainsValue(released))
-                output.Send(0x80, released, 0);
+            if (button == GamepadButtons.RightShoulder) drums.Shoulder(false);
+            int releasedPad = PadIndex(button);
+            if (releasedPad >= 0) drums.Pad(releasedPad, 0, false);
             return;
         }
         if (!downButtons.Add(button)) return;
+        if (button == GamepadButtons.RightShoulder) { drums.Shoulder(true); return; }
         switch (button)
         {
             case GamepadButtons.DPadDown: ToggleBank(); return;
@@ -47,9 +57,8 @@ internal sealed class BoomBapPreset
         int pad = PadIndex(button);
         if (!output.IsOpen || pad < 0) return;
         byte note = (byte)Settings.Banks[ActiveBank][pad].Note;
-        bool alreadySounding = heldNotes.ContainsValue(note);
-        heldNotes.Add(button, note);
-        if (!alreadySounding) output.Send(0x90, note, 110);
+        drums.Shoulder(downButtons.Contains(GamepadButtons.RightShoulder));
+        drums.Pad(pad, note, true);
     }
 
     private static int PadIndex(GamepadButtons button) => button switch
@@ -70,6 +79,7 @@ internal sealed class BoomBapPreset
         settings.Validate();
         ReleaseNotes();
         Settings = settings;
+        ConfigureDrums();
         SyncSwing();
         Changed?.Invoke();
     }
@@ -97,13 +107,17 @@ internal sealed class BoomBapPreset
         CommandSent?.Invoke($"Swing global {Settings.SwingPercent}% enviado · requer script X-MIDI.");
     }
 
-    private void ReleaseNotes()
+    private void ReleaseNotes() => drums.Stop();
+    public void SetTrigger(byte lt) => drums.Trigger(lt);
+    public void ConfigureDrums()
     {
-        foreach (byte note in heldNotes.Values.Distinct()) output.Send(0x80, note, 0);
-        heldNotes.Clear();
+        Settings.Validate();
+        drums.Configure(Settings);
     }
+    public void Dispose() => drums.Dispose();
     public void Analog(Gamepad gamepad)
     {
+        SetTrigger(gamepad.LeftTrigger);
         if (!output.IsOpen) return;
         SendCc(0, 74, gamepad.LeftThumbX, Gamepad.LeftThumbDeadZone);
         SendCc(1, 91, gamepad.RightThumbX, Gamepad.RightThumbDeadZone);
@@ -126,7 +140,7 @@ internal sealed class BoomBapPreset
     }
     public void Reset()
     {
-        heldNotes.Clear();
+        drums.Stop();
         downButtons.Clear();
         Array.Fill(lastCc, -1);
         Array.Clear(lastCcTime);

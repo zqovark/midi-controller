@@ -41,6 +41,12 @@ public partial class MainWindow : Window
         saveTimer.Tick += async (_, _) => { saveTimer.Stop(); await SaveSettingsAsync(); };
         preset.Changed += () => { UpdateMusicalControls(); ScheduleSave(); };
         preset.CommandSent += message => CommandStatus.Text = message;
+        preset.RepeatFailed += ex => Dispatcher.BeginInvoke(new Action(() =>
+        {
+            midi.Dispose();
+            preset.Reset();
+            MidiStatus.Text = $"Note Repeat interrompido: {ex.Message}";
+        }));
         UpdateMusicalControls();
         indicators = new()
         {
@@ -53,11 +59,18 @@ public partial class MainWindow : Window
         };
         midi.Sent += (status, data1, data2) =>
         {
-            string kind = status == 0x90 ? "ON " : status == 0x80 ? "OFF" : "CC ";
-            string channel = $"ch {(status & 15) + 1}";
-            Monitor.Items.Insert(0, $"{DateTime.Now:HH:mm:ss.fff} {kind} {data1,3} {data2,3} {channel} [{status:X2} {data1:X2} {data2:X2}]");
-            if (Monitor.Items.Count > 200) Monitor.Items.RemoveAt(200);
-            MessageCount.Text = $"{++messageCount} enviadas";
+            // MIDI is sent on the scheduler thread; the monitor must never block it.
+            var stamp = DateTime.Now;
+            void AddMessage()
+            {
+                if (Dispatcher.HasShutdownStarted) return;
+                string kind = status == 0x90 ? "ON " : status == 0x80 ? "OFF" : "CC ";
+                Monitor.Items.Insert(0, $"{stamp:HH:mm:ss.fff} {kind} {data1,3} {data2,3} ch {(status & 15) + 1} [{status:X2} {data1:X2} {data2:X2}]");
+                if (Monitor.Items.Count > 200) Monitor.Items.RemoveAt(200);
+                MessageCount.Text = $"{++messageCount} enviadas";
+            }
+            if (Dispatcher.CheckAccess()) AddMessage();
+            else Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(AddMessage));
         };
         reader.Sampled += Sampled;
         timer = new(DispatcherPriority.Input) { Interval = TimeSpan.FromMilliseconds(8) };
@@ -88,12 +101,22 @@ public partial class MainWindow : Window
         if (!connected)
         {
             preset.Silence();
+            gamepad = default;
             activeController = null;
             ControllerStatus.Text = "● Aguardando controle";
         }
+        preset.SetTrigger(gamepad.LeftTrigger);
+        var changed = gamepad.Buttons ^ previousButtons;
+        // Release first; RB pressed alongside a pad release must not retrigger that pad.
         foreach (var button in Enum.GetValues<GamepadButtons>())
-            if (((gamepad.Buttons ^ previousButtons) & button) != 0)
-                preset.Button(button, (gamepad.Buttons & button) != 0);
+            if ((changed & button) != 0 && (gamepad.Buttons & button) == 0)
+                preset.Button(button, false);
+        // Apply RB before new presses so simultaneous RB + pad uses repeat from the first hit.
+        if ((changed & gamepad.Buttons & GamepadButtons.RightShoulder) != 0)
+            preset.Button(GamepadButtons.RightShoulder, true);
+        foreach (var button in Enum.GetValues<GamepadButtons>().Where(b => b != GamepadButtons.RightShoulder))
+            if ((changed & gamepad.Buttons & button) != 0)
+                preset.Button(button, true);
         previousButtons = gamepad.Buttons;
         if (connected) preset.Analog(gamepad);
         foreach (var (button, indicator) in indicators)
@@ -104,6 +127,8 @@ public partial class MainWindow : Window
         RTBar.Value = gamepad.RightTrigger * 100.0 / 255;
         LTLabel.Text = $"LT {LTBar.Value:0}%";
         RTLabel.Text = $"RT {RTBar.Value:0}%";
+        VelocityReadout.Text = $"LT {LTBar.Value:0}% · VEL {preset.CurrentVelocity}";
+        RepeatReadout.Text = preset.IsRepeating ? "● REPETINDO" : "RB + A/B/X/Y";
     }
 
     private static void UpdateStick(Ellipse puck, short rawX, short rawY, int deadZone, bool pressed, TextBlock label)
@@ -199,8 +224,42 @@ public partial class MainWindow : Window
             SwingStepLabel.Text = $"passo {preset.Settings.SwingStep}%";
             SwingSlider.TickFrequency = preset.Settings.SwingStep;
             SwingSlider.Value = preset.Settings.SwingPercent;
+            DefaultVelocitySlider.Value = preset.Settings.DefaultVelocity;
+            MinimumVelocitySlider.Maximum = preset.Settings.DefaultVelocity;
+            MinimumVelocitySlider.Value = preset.Settings.MinimumVelocity;
+            VelocityCurveSelector.SelectedIndex = (int)preset.Settings.VelocityCurve;
+            RepeatEnabled.IsChecked = preset.Settings.NoteRepeatEnabled;
+            RepeatDivisionSelector.SelectedIndex = (int)preset.Settings.RepeatDivision;
+            BpmSlider.Value = preset.Settings.RepeatBpm;
+            UpdateDrumLabels();
         }
         finally { updatingMusic = false; }
+    }
+
+    private void UpdateDrumLabels()
+    {
+        DefaultVelocityLabel.Text = $"PADRÃO {preset.Settings.DefaultVelocity}";
+        MinimumVelocityLabel.Text = $"MÍNIMA {preset.Settings.MinimumVelocity}";
+        BpmLabel.Text = $"BPM {preset.Settings.RepeatBpm:0}";
+        VelocityReadout.Text = $"LT {LTBar.Value:0}% · VEL {preset.CurrentVelocity}";
+    }
+
+    private void DrumValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e) => UpdateDrumSettings();
+    private void DrumSelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateDrumSettings();
+    private void RepeatEnabledChanged(object sender, RoutedEventArgs e) => UpdateDrumSettings();
+    private void UpdateDrumSettings()
+    {
+        if (updatingMusic || preset is null) return;
+        var settings = preset.Settings;
+        settings.DefaultVelocity = (int)DefaultVelocitySlider.Value;
+        settings.MinimumVelocity = Math.Min((int)MinimumVelocitySlider.Value, settings.DefaultVelocity);
+        settings.VelocityCurve = (VelocityCurve)Math.Max(0, VelocityCurveSelector.SelectedIndex);
+        settings.NoteRepeatEnabled = RepeatEnabled.IsChecked == true;
+        settings.RepeatDivision = (RepeatDivision)Math.Max(0, RepeatDivisionSelector.SelectedIndex);
+        settings.RepeatBpm = BpmSlider.Value;
+        RunCommand(preset.ConfigureDrums);
+        UpdateMusicalControls();
+        ScheduleSave();
     }
 
     private void RunCommand(Action command)
@@ -258,7 +317,12 @@ public partial class MainWindow : Window
         saveTimer.Stop();
         try { preset.Silence(); }
         catch (InvalidOperationException) { }
-        finally { midi.Dispose(); }
+        finally
+        {
+            try { preset.Dispose(); }
+            catch (InvalidOperationException) { }
+            finally { midi.Dispose(); }
+        }
         if (settingsDirty && allowSaving)
         {
             try { settingsStore.SaveAsync(preset.Settings.Copy()).GetAwaiter().GetResult(); }
