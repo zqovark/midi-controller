@@ -1,0 +1,154 @@
+﻿<Window x:Class="XMidi.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="X-MIDI" Width="1040" Height="790" MinWidth="980" MinHeight="760"
+        Background="#141218" Foreground="#E6E0E9" FontFamily="Tahoma" FontSize="12" WindowStyle="None" WindowStartupLocation="CenterScreen" UseLayoutRounding="True">
+    <shell:WindowChrome.WindowChrome><shell:WindowChrome CaptionHeight="32" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="10" UseAeroCaptionButtons="False"/></shell:WindowChrome.WindowChrome>
+    <Window.Resources>
+        <LinearGradientBrush x:Key="Metal" StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#39343F" Offset="0"/><GradientStop Color="#211F26" Offset="0.12"/><GradientStop Color="#141218" Offset="0.52"/><GradientStop Color="#211F26" Offset="1"/></LinearGradientBrush>
+        <LinearGradientBrush x:Key="KeyMetal" StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#EADDFF" Offset="0"/><GradientStop Color="#D8C7FA" Offset="0.45"/><GradientStop Color="#C3ACE7" Offset="0.5"/><GradientStop Color="#D0BCFF" Offset="1"/></LinearGradientBrush>
+        <LinearGradientBrush x:Key="PanelMetal" StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#36313D" Offset="0"/><GradientStop Color="#2B2930" Offset="0.08"/><GradientStop Color="#211F26" Offset="0.92"/><GradientStop Color="#1D1B20" Offset="1"/></LinearGradientBrush>
+        <SolidColorBrush x:Key="Muted" Color="#CAC4D0"/>
+        <Style x:Key="Display" TargetType="Border"><Setter Property="Background" Value="#141218"/><Setter Property="BorderBrush" Value="#0F0D13"/><Setter Property="BorderThickness" Value="2,2,1,1"/><Setter Property="CornerRadius" Value="2"/><Setter Property="Padding" Value="10,6"/></Style>
+        <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#E6E0E9"/></Style>
+        <Style TargetType="Button">
+            <Setter Property="Foreground" Value="#21005D"/><Setter Property="Background" Value="{StaticResource KeyMetal}"/>
+            <Setter Property="Padding" Value="14,9"/><Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+                <Border x:Name="Surface" Background="{TemplateBinding Background}" BorderBrush="#D0BCFF" BorderThickness="1,1,1,2" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}"/>
+                </Border><ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#EADDFF"/></Trigger>
+                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="#FFFFFF"/></Trigger>
+                    <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Background" Value="#EADDFF"/></Trigger>
+                    <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Surface" Property="Opacity" Value="0.4"/></Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Foreground" Value="#E6E0E9"/><Setter Property="Background" Value="#211F26"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox">
+                <Grid>
+                    <ToggleButton Focusable="False" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                        <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="#1D1B20" BorderBrush="#938F99" BorderThickness="1" CornerRadius="2" Padding="12"><TextBlock HorizontalAlignment="Right" Text="⌄"/></Border></ControlTemplate></ToggleButton.Template>
+                    </ToggleButton>
+                    <ContentPresenter Margin="12,0,28,0" VerticalAlignment="Center" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}"/>
+                    <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False">
+                        <Border Background="#1D1B20" BorderBrush="#938F99" BorderThickness="1" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                            <ScrollViewer MaxHeight="240"><ItemsPresenter/></ScrollViewer>
+                        </Border>
+                    </Popup>
+                </Grid>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
+        <Style TargetType="ComboBoxItem"><Setter Property="Foreground" Value="#E6E0E9"/><Setter Property="Padding" Value="10"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem"><Border x:Name="Item" Background="#1D1B20" Padding="{TemplateBinding Padding}"><ContentPresenter/></Border><ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Item" Property="Background" Value="#4F378B"/></Trigger><Trigger Property="IsSelected" Value="True"><Setter TargetName="Item" Property="Background" Value="#4F378B"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
+        <Style x:Key="Card" TargetType="Border"><Setter Property="Background" Value="{StaticResource PanelMetal}"/><Setter Property="CornerRadius" Value="7"/><Setter Property="Padding" Value="16"/><Setter Property="BorderBrush" Value="#938F99"/><Setter Property="BorderThickness" Value="1,2,1,1"/></Style>
+        <Style x:Key="Pad" TargetType="Border"><Setter Property="Background" Value="{StaticResource Metal}"/><Setter Property="BorderBrush" Value="#938F99"/><Setter Property="BorderThickness" Value="2"/><Setter Property="CornerRadius" Value="24"/><Setter Property="Width" Value="46"/><Setter Property="Height" Value="46"/></Style>
+        <Style TargetType="Slider"><Setter Property="Foreground" Value="#D0BCFF"/><Setter Property="Background" Value="#938F99"/></Style>
+        <Style TargetType="ProgressBar"><Setter Property="Height" Value="7"/><Setter Property="Maximum" Value="100"/><Setter Property="Background" Value="#49454F"/><Setter Property="Foreground" Value="#D0BCFF"/><Setter Property="BorderThickness" Value="0"/></Style>
+    </Window.Resources>
+    <Border Background="{StaticResource Metal}" BorderBrush="#938F99" BorderThickness="1" CornerRadius="10" Padding="5">
+    <Border BorderBrush="#0F0D13" BorderThickness="2" CornerRadius="7" Padding="5">
+    <Grid Margin="2">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Grid Margin="3,0,3,8" Height="30">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBlock Text="●  X–MIDI" Foreground="#EADDFF" FontFamily="Consolas" FontWeight="Bold" VerticalAlignment="Center" Margin="4,0,15,0"/>
+            <Border Grid.Column="1" Height="5" VerticalAlignment="Center" BorderBrush="#938F99" BorderThickness="0,1" Background="#141218" Margin="0,0,18,0"/>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock x:Name="ControllerStatus" Text="● Aguardando controle" Foreground="#D0BCFF" VerticalAlignment="Center" FontSize="11" Margin="0,0,14,0"/>
+                <Button Content="_" Width="24" Padding="0" Height="20" Click="MinimizeClicked" shell:WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Minimizar"/>
+                <Button Content="×" Width="24" Padding="0" Height="20" Margin="4,0,0,0" Click="CloseClicked" shell:WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Fechar"/>
+            </StackPanel>
+        </Grid>
+        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,0,10" Padding="18,14">
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="300"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center"><TextBlock Text="SAÍDA MIDI" Foreground="{StaticResource Muted}" FontSize="10"/><TextBlock x:Name="MidiStatus" Text="Selecione a porta do loopMIDI" Margin="0,5,12,0" FontSize="12" TextTrimming="CharacterEllipsis"/></StackPanel>
+                <ComboBox x:Name="Ports" Grid.Column="1" VerticalAlignment="Center" MinHeight="38" SelectionChanged="PortSelected" AutomationProperties.Name="Porta MIDI de saída"/>
+                <Button Grid.Column="2" Content="Atualizar" Margin="10,0,0,0" Click="RefreshClicked"/>
+                <Button Grid.Column="3" Content="Silenciar" Margin="10,0,0,0" Click="SilenceClicked" ToolTip="Solta as notas e envia All Notes Off"/>
+            </Grid>
+        </Border>
+        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="16,12" Margin="0,0,0,10">
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Button x:Name="BankButton" Width="126" Margin="0,0,12,0" Click="BankClicked" Background="{StaticResource KeyMetal}" ToolTip="↓ alterna o banco e libera notas anteriores"><TextBlock Foreground="#21005D" x:Name="BankLabel" Text="↓ Banco 1" FontWeight="SemiBold"/></Button>
+                <Button Grid.Column="1" Width="144" Margin="0,0,20,0" Content="↑ Play / Pause" Click="PlayPauseClicked" ToolTip="Envia o comando; o estado de reprodução não é recebido do FL"/>
+                <StackPanel Grid.Column="2">
+                    <DockPanel><TextBlock x:Name="SwingValue" Text="SWING GLOBAL · 0%" FontSize="11" Foreground="#CCC2DC"/><TextBlock x:Name="SwingStepLabel" Text="passo 5%" Foreground="{StaticResource Muted}" FontSize="10" HorizontalAlignment="Right"/></DockPanel>
+                    <Grid Margin="0,7,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition/><ColumnDefinition Width="30"/></Grid.ColumnDefinitions>
+                        <Button Content="−" Padding="5,1" Click="SwingDownClicked"/>
+                        <Slider x:Name="SwingSlider" Grid.Column="1" Margin="8,0" Minimum="0" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" ValueChanged="SwingValueChanged" VerticalAlignment="Center" AutomationProperties.Name="Swing global do sequenciador"/>
+                        <Button Grid.Column="2" Content="+" Padding="5,1" Click="SwingUpClicked"/>
+                    </Grid>
+                </StackPanel>
+                <StackPanel Grid.Column="3" Margin="20,0,0,0" VerticalAlignment="Center">
+                    <TextBlock x:Name="CommandStatus" Text="Transporte/swing: selecione o script X-MIDI no FL." FontSize="11" TextWrapping="Wrap" Foreground="#CAC4D0"/>
+                    <TextBlock Text="Swing do sequenciador: não altera notas ao vivo nem isola pads do FPC." FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+        <Grid Grid.Row="3"><Grid.ColumnDefinitions><ColumnDefinition Width="1.9*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Style="{StaticResource Card}">
+                <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <StackPanel><TextBlock Text="CONTROLE" FontSize="12" FontWeight="SemiBold"/><TextBlock Text="Entradas em tempo real" Foreground="{StaticResource Muted}" Margin="0,5,0,0" FontSize="12"/></StackPanel>
+                    <Viewbox Grid.Row="1" Stretch="Uniform" Margin="0,8">
+                        <Canvas Width="620" Height="370">
+                            <Path Fill="{StaticResource Metal}" Stroke="#938F99" StrokeThickness="2" Data="M 125,65 C 75,65 60,110 43,175 L 15,285 C 5,340 60,358 91,318 L 150,255 L 468,255 L 527,318 C 560,358 615,340 603,285 L 578,175 C 560,110 545,65 495,65 Z"/>
+                            <Border x:Name="LB" Canvas.Left="107" Canvas.Top="46" Width="125" Height="24" Background="#36343B" CornerRadius="8"><TextBlock Text="LB" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11"/></Border>
+                            <Border x:Name="RB" Canvas.Left="388" Canvas.Top="46" Width="125" Height="24" Background="#36343B" CornerRadius="8"><TextBlock Text="RB" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11"/></Border>
+                            <TextBlock x:Name="LTLabel" Canvas.Left="110" Canvas.Top="0" Text="LT 0%" Foreground="#CAC4D0"/><ProgressBar x:Name="LTBar" Canvas.Left="110" Canvas.Top="23" Width="120"/>
+                            <TextBlock x:Name="RTLabel" Canvas.Left="390" Canvas.Top="0" Text="RT 0%" Foreground="#CAC4D0"/><ProgressBar x:Name="RTBar" Canvas.Left="390" Canvas.Top="23" Width="120"/>
+                            <Ellipse Canvas.Left="267" Canvas.Top="85" Width="86" Height="55" Fill="#1D1B20" Stroke="#938F99"/>
+                            <TextBlock Canvas.Left="285" Canvas.Top="103" Text="MIDI" Foreground="#D0BCFF" FontWeight="Bold" FontSize="17"/>
+                            <Border x:Name="Back" Canvas.Left="246" Canvas.Top="153" Width="34" Height="24" CornerRadius="10" Background="#36343B"><TextBlock Text="▣" HorizontalAlignment="Center"/></Border>
+                            <Border x:Name="Start" Canvas.Left="339" Canvas.Top="153" Width="34" Height="24" CornerRadius="10" Background="#36343B"><TextBlock Text="☰" HorizontalAlignment="Center"/></Border>
+                            <Canvas Canvas.Left="113" Canvas.Top="104" Width="100" Height="100">
+                                <Ellipse Width="100" Height="100" Fill="#141218" Stroke="#938F99" StrokeThickness="2"/>
+                                <Ellipse x:Name="LeftPuck" Canvas.Left="29" Canvas.Top="29" Width="42" Height="42" Fill="#49454F" Stroke="#D0BCFF" StrokeThickness="2"/>
+                            </Canvas>
+                            <Canvas Canvas.Left="355" Canvas.Top="211" Width="100" Height="100">
+                                <Ellipse Width="100" Height="100" Fill="#141218" Stroke="#938F99" StrokeThickness="2"/>
+                                <Ellipse x:Name="RightPuck" Canvas.Left="29" Canvas.Top="29" Width="42" Height="42" Fill="#49454F" Stroke="#CCC2DC" StrokeThickness="2"/>
+                            </Canvas>
+                            <Border x:Name="DPadUp" Canvas.Left="213" Canvas.Top="211" Width="28" Height="30" Background="#36343B" CornerRadius="5"><TextBlock Text="↑" HorizontalAlignment="Center"/></Border>
+                            <Border x:Name="DPadDown" Canvas.Left="213" Canvas.Top="265" Width="28" Height="30" Background="#36343B" CornerRadius="5"><TextBlock Text="↓" HorizontalAlignment="Center"/></Border>
+                            <Border x:Name="DPadLeft" Canvas.Left="185" Canvas.Top="239" Width="30" Height="28" Background="#36343B" CornerRadius="5"><TextBlock Text="←" HorizontalAlignment="Center"/></Border>
+                            <Border x:Name="DPadRight" Canvas.Left="239" Canvas.Top="239" Width="30" Height="28" Background="#36343B" CornerRadius="5"><TextBlock Text="→" HorizontalAlignment="Center"/></Border>
+                            <Border x:Name="PadY" Style="{StaticResource Pad}" Canvas.Left="466" Canvas.Top="94"><TextBlock Text="Y" Foreground="#F5D78E" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                            <Border x:Name="PadX" Style="{StaticResource Pad}" Canvas.Left="420" Canvas.Top="140"><TextBlock Text="X" Foreground="#B3C5FF" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                            <Border x:Name="PadB" Style="{StaticResource Pad}" Canvas.Left="512" Canvas.Top="140"><TextBlock Text="B" Foreground="#FFB4AB" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                            <Border x:Name="PadA" Style="{StaticResource Pad}" Canvas.Left="466" Canvas.Top="186"><TextBlock Text="A" Foreground="#D0BCFF" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                            <TextBlock Canvas.Left="112" Canvas.Top="325" Text="FILTRO · CC 74" Foreground="#D0BCFF" FontSize="12"/>
+                            <TextBlock Canvas.Left="355" Canvas.Top="325" Text="EFEITO · CC 91" Foreground="#CCC2DC" FontSize="12"/>
+                        </Canvas>
+                    </Viewbox>
+                    <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                        <StackPanel><TextBlock Text="ANALÓGICO ESQUERDO" Foreground="{StaticResource Muted}" FontSize="10"/><TextBlock FontFamily="Consolas" x:Name="LeftValues" Text="X 0% · Y 0% · CC 64" Margin="0,7,0,0" FontSize="12"/></StackPanel>
+                        <StackPanel Grid.Column="1"><TextBlock Text="ANALÓGICO DIREITO" Foreground="{StaticResource Muted}" FontSize="10"/><TextBlock FontFamily="Consolas" x:Name="RightValues" Text="X 0% · Y 0% · CC 64" Margin="0,7,0,0" FontSize="12"/></StackPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+            <Grid Grid.Column="2"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="10"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <Border Style="{StaticResource Card}"><StackPanel>
+                    <TextBlock x:Name="BankDescription" Text="BANCO 1 · CANAL 1" Foreground="#D0BCFF" FontSize="10"/>
+                    <TextBlock Text="Mapeamento de notas" FontSize="17" FontWeight="SemiBold" Margin="0,8,0,16"/>
+                    <TextBlock FontFamily="Consolas" FontSize="13" Foreground="#E6E0E9" x:Name="MapA" Text="A · Kick · 36" Margin="0,0,0,9" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock FontFamily="Consolas" FontSize="13" Foreground="#E6E0E9" x:Name="MapB" Text="B · Snare · 38" Margin="0,0,0,9" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock FontFamily="Consolas" FontSize="13" Foreground="#E6E0E9" x:Name="MapX" Text="X · Closed hi-hat · 42" Margin="0,0,0,9" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock FontFamily="Consolas" FontSize="13" Foreground="#E6E0E9" x:Name="MapY" Text="Y · Open hi-hat · 46" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="VEL 110 / LT e RT: leitura" FontSize="11" Foreground="{StaticResource Muted}" Margin="0,16,0,0" TextWrapping="Wrap"/>
+                    <Button Content="Editar mapeamento…" Click="ConfigureClicked" Margin="0,12,0,0" Padding="10,7"/>
+                </StackPanel></Border>
+                <Border Grid.Row="2" Style="{StaticResource Card}" Padding="16"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                    <DockPanel Margin="0,0,0,12"><TextBlock x:Name="MessageCount" DockPanel.Dock="Right" Text="0 enviadas" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock Text="Mensagens MIDI" FontWeight="SemiBold"/></DockPanel>
+                    <ListBox x:Name="Monitor" Grid.Row="1" Background="#141218" BorderBrush="#938F99" BorderThickness="2,2,1,1" Padding="5" Foreground="#CAC4D0" FontFamily="Consolas" FontSize="11" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Foreground="#CAC4D0" TextWrapping="Wrap" Margin="0,2"/></DataTemplate></ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid></Border>
+            </Grid>
+        </Grid>
+        <TextBlock x:Name="SettingsStatus" Grid.Row="4" Text="↑ Play/Pause · ↓ Banco · ←/→ Swing" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,17,0,0" TextWrapping="Wrap"/>
+    </Grid>
+    </Border></Border>
+</Window>

@@ -1,0 +1,33 @@
+﻿<Window x:Class="XMidi.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="X-MIDI · Bancos e swing" Width="800" Height="590" MinWidth="730" MinHeight="550"
+        Background="#211F26" Foreground="#E6E0E9" FontFamily="Tahoma" WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <Style TargetType="TextBox"><Setter Property="Background" Value="#1D1B20"/><Setter Property="Foreground" Value="#E6E0E9"/><Setter Property="BorderBrush" Value="#938F99"/><Setter Property="Padding" Value="7"/></Style>
+        <DataTemplate x:Key="PadEditor">
+            <Grid Margin="0,5"><Grid.ColumnDefinitions><ColumnDefinition Width="26"/><ColumnDefinition Width="*"/><ColumnDefinition Width="64"/></Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding Letter}" VerticalAlignment="Center" Foreground="#D0BCFF"/>
+                <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" MaxLength="40" Margin="0,0,8,0" ToolTip="Nome descritivo; não carrega nem substitui samples no FPC"/>
+                <TextBox Grid.Column="2" Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}" MaxLength="3" ToolTip="Nota MIDI de 0 a 127"/>
+            </Grid>
+        </DataTemplate>
+    </Window.Resources>
+    <Grid Margin="24"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <StackPanel Margin="0,0,0,18"><TextBlock Text="Mapeamento MIDI" FontSize="22" FontWeight="SemiBold"/>
+            <TextBlock Text="Os nomes são rótulos. Cada nota deve corresponder a um pad/sample já configurado no FPC." TextWrapping="Wrap" Foreground="#CAC4D0" Margin="0,8,0,0"/></StackPanel>
+        <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="16"/><ColumnDefinition/></Grid.ColumnDefinitions>
+            <Border Style="{DynamicResource Card}" Padding="16"><StackPanel><TextBlock Text="BANCO 1" Foreground="#D0BCFF" Margin="0,0,0,14"/>
+                <DockPanel><TextBlock Text="Nota MIDI" DockPanel.Dock="Right" FontSize="10" Foreground="#CAC4D0"/><TextBlock Text="Botão / instrumento" FontSize="10" Foreground="#CAC4D0"/></DockPanel>
+                <ItemsControl x:Name="Bank1Editors" ItemTemplate="{StaticResource PadEditor}"/>
+            </StackPanel></Border>
+            <Border Grid.Column="2" Style="{DynamicResource Card}" Padding="16"><StackPanel><TextBlock Text="BANCO 2" Foreground="#CCC2DC" Margin="0,0,0,14"/>
+                <DockPanel><TextBlock Text="Nota MIDI" DockPanel.Dock="Right" FontSize="10" Foreground="#CAC4D0"/><TextBlock Text="Botão / instrumento" FontSize="10" Foreground="#CAC4D0"/></DockPanel>
+                <ItemsControl x:Name="Bank2Editors" ItemTemplate="{StaticResource PadEditor}"/>
+            </StackPanel></Border>
+        </Grid>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,18,0,0"><TextBlock Text="Incremento de swing (%)" VerticalAlignment="Center" Margin="0,0,12,0"/><TextBox x:Name="SwingStepInput" Width="64" MaxLength="3"/><TextBlock Text="Padrão: 5 · válido de 1 a 100" VerticalAlignment="Center" Foreground="#CAC4D0" Margin="12,0,0,0"/></StackPanel>
+        <TextBlock x:Name="ErrorText" Grid.Row="3" TextWrapping="Wrap" Foreground="#FFB4AB" Margin="0,12,0,0"/>
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0"><Button Content="Cancelar" IsCancel="True" Margin="0,0,12,0"/><Button Content="Salvar configurações" IsDefault="True" Click="SaveClicked"/></StackPanel>
+    </Grid>
+</Window>
