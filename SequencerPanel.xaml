@@ -1,0 +1,63 @@
+<UserControl x:Class="XMidi.SequencerPanel"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:local="clr-namespace:XMidi">
+ <UserControl.Resources>
+  <Style TargetType="TextBox"><Setter Property="Background" Value="#141218"/><Setter Property="Foreground" Value="#E6E0E9"/>
+   <Setter Property="BorderBrush" Value="#938F99"/><Setter Property="Padding" Value="3,2"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style>
+  <Style TargetType="CheckBox"><Setter Property="Foreground" Value="#D0BCFF"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+ </UserControl.Resources>
+ <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+  <StackPanel Margin="0,4,0,0">
+   <WrapPanel Margin="0,0,0,5">
+    <ComboBox x:Name="Patterns" Width="130" SelectionChanged="PatternSelected" AutomationProperties.Name="Padrão"/>
+    <Button Padding="6,4" Margin="2,0" Content="Novo" Click="NewClicked"/><Button Padding="6,4" Margin="2,0" Content="Duplicar" Click="DuplicateClicked"/><Button Padding="6,4" Margin="2,0" Content="Excluir" Click="DeleteClicked"/>
+    <TextBox x:Name="NameInput" Width="100" Margin="5,0" AutomationProperties.Name="Nome do padrão"/><Button Padding="6,4" Margin="2,0" Content="Renomear" Click="RenameClicked"/>
+   </WrapPanel>
+   <WrapPanel Margin="0,0,0,5">
+    <Button Padding="6,4" Margin="2,0" Content="▶ Play" Click="PlayClicked"/><Button Padding="6,4" Margin="2,0" Content="■ Stop" Click="StopClicked"/><Button Padding="6,4" Margin="2,0" x:Name="RecordButton" Content="● REC" Click="RecordClicked"/>
+    <CheckBox x:Name="LiveToggle" Content="LIVE" Margin="7,0" Checked="EditorModeChanged" Unchecked="EditorModeChanged" ToolTip="STEP e LIVE usam o mesmo padrão e a mesma grade."/>
+    <CheckBox x:Name="OverdubToggle" Content="Overdub" IsChecked="True" Checked="OverdubChanged" Unchecked="OverdubChanged"/>
+    <Button Padding="6,4" Margin="2,0" Content="Undo" Click="UndoClicked"/><Button Padding="6,4" Margin="2,0" Content="Redo" Click="RedoClicked"/>
+    <Button Padding="6,4" Margin="2,0" Content="Salvar JSON…" Click="SaveClicked"/><Button Padding="6,4" Margin="2,0" Content="Abrir…" Click="LoadClicked"/><Button Padding="6,4" Margin="2,0" Content="MIDI…" Click="MidiClicked"/>
+   </WrapPanel>
+   <WrapPanel Margin="0,0,0,5">
+    <TextBlock Text="BPM " VerticalAlignment="Center" FontSize="10"/><TextBox x:Name="BpmInput" Width="42" AutomationProperties.Name="BPM local"/>
+    <TextBlock Text=" Compasso " VerticalAlignment="Center" FontSize="10"/><TextBox x:Name="MeterInput" Width="38" Text="4/4" AutomationProperties.Name="Compasso"/>
+    <TextBlock Text=" Barras " VerticalAlignment="Center" FontSize="10"/><TextBox x:Name="BarsInput" Width="27" Text="1" AutomationProperties.Name="Quantidade de compassos"/>
+    <ComboBox x:Name="StepsSelector" Width="60" Margin="4,0" AutomationProperties.Name="Passos por compasso"/><Button Padding="6,4" Margin="2,0" Content="Aplicar" Click="ConfigureClicked"/>
+    <CheckBox x:Name="CountInToggle" Content="Count-in" Margin="6,0" ToolTip="Um compasso de preparação, com indicação visual; clique exige destino MIDI configurado."/>
+   </WrapPanel>
+   <WrapPanel Margin="0,0,0,5">
+    <TextBlock Text="Q " VerticalAlignment="Center"/><ComboBox x:Name="QuantizeSelector" Width="78" AutomationProperties.Name="Quantização"/>
+    <TextBox x:Name="StrengthInput" Width="34" Margin="3,0" Text="100" AutomationProperties.Name="Força da quantização em porcentagem"/><Button Padding="6,4" Margin="2,0" Content="Quantizar" Click="QuantizeClicked"/>
+    <CheckBox x:Name="MetroToggle" Content="Metro MIDI" Margin="6,0"/><TextBlock Text=" ch " FontSize="10" VerticalAlignment="Center"/>
+    <TextBox x:Name="MetroChannel" Text="10" Width="26" AutomationProperties.Name="Canal MIDI do metrônomo"/>
+    <TextBlock Text=" nota " FontSize="10" VerticalAlignment="Center"/><TextBox x:Name="MetroNote" Text="76" Width="28" AutomationProperties.Name="Nota do metrônomo"/>
+    <TextBlock Text=" vel " FontSize="10" VerticalAlignment="Center"/><TextBox x:Name="MetroVelocity" Text="90" Width="28" AutomationProperties.Name="Velocity do metrônomo"/>
+    <Button Padding="6,4" Margin="2,0" Content="Metro" Click="MetronomeClicked"/>
+   </WrapPanel>
+   <TextBlock x:Name="TransportStatus" Text="STEP · parado · transporte local, sem sincronismo com FL" FontFamily="Consolas" Foreground="#D0BCFF" FontSize="11" Margin="0,0,0,4"/>
+   <Grid>
+    <Grid.ColumnDefinitions><ColumnDefinition Width="110"/><ColumnDefinition/></Grid.ColumnDefinitions>
+    <StackPanel><TextBlock Text="DRUM / TRILHA" Height="22" FontSize="10"/>
+     <ItemsControl x:Name="TrackNames"><ItemsControl.ItemTemplate><DataTemplate>
+      <Border Height="27" Background="{Binding Color}" Padding="3,4"><TextBlock Text="{Binding Name}" FontSize="10" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}"/></Border>
+     </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+    </StackPanel>
+    <ScrollViewer x:Name="GridScroll" Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" ScrollChanged="GridScrolled">
+     <local:StepSequenceGrid x:Name="StepsGrid"/>
+    </ScrollViewer>
+   </Grid>
+   <WrapPanel Margin="0,5,0,0">
+    <TextBlock x:Name="SelectedLabel" Text="Selecione uma nota" FontSize="10" Width="135" VerticalAlignment="Center"/>
+    <TextBlock Text="Vel " FontSize="10" VerticalAlignment="Center"/><TextBox x:Name="VelocityInput" Width="30" AutomationProperties.Name="Velocity da nota"/>
+    <TextBlock Text=" Dur ticks " FontSize="10" VerticalAlignment="Center"/><TextBox x:Name="DurationInput" Width="45" AutomationProperties.Name="Duração em ticks"/>
+    <TextBlock Text=" Offset " FontSize="10" VerticalAlignment="Center"/><TextBox x:Name="OffsetInput" Width="42" AutomationProperties.Name="Microtiming em ticks"/>
+    <Button Padding="6,4" Margin="2,0" Content="Editar" Click="EditNoteClicked"/><Button Padding="6,4" Margin="2,0" Content="Remover" Click="RemoveNoteClicked"/>
+   </WrapPanel>
+   <TextBlock Text="Clique vazio: inserir · clique na nota: selecionar · clique direito: remover · novas notas usam velocity padrão do LT." FontSize="10" Foreground="#CAC4D0" TextWrapping="Wrap" Margin="0,4,0,0"/>
+   <TextBlock x:Name="StatusText" FontSize="11" Foreground="#D0BCFF" TextWrapping="Wrap" Margin="0,3,0,0"/>
+  </StackPanel>
+ </ScrollViewer>
+</UserControl>

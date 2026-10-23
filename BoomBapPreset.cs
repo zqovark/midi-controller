@@ -7,6 +7,8 @@ internal sealed class BoomBapPreset : IDisposable
     private readonly MidiOutput output;
     private readonly ManualTempoSource tempo = new();
     private readonly DrumEngine drums;
+    public SequenceEngine Sequencer { get; }
+    public bool MidiReady => output.IsOpen;
     private readonly MidiVoices voices;
     private readonly int[] banks = new int[3];
     private byte[] previousChord = [];
@@ -29,7 +31,13 @@ internal sealed class BoomBapPreset : IDisposable
         Settings = settings ?? new();
         Settings.Validate();
         tempo.Bpm = Settings.RepeatBpm;
-        drums = new(output.Send, tempo, background, clock);
+        var ownership = new MidiNoteOwnership(output.Send);
+        Sequencer = new((s, n, v) => ownership.Send(1, s, n, v), background, clock);
+        Sequencer.SetMappings(Settings.Banks);
+        Sequencer.Swing = Settings.SwingPercent;
+        Sequencer.Failed += ex => RepeatFailed?.Invoke(ex);
+        drums = new((s, n, v) => ownership.Send(0, s, n, v), tempo, background, clock);
+        drums.NotePlayed += (pad, velocity, on) => Sequencer.CaptureDrum(ActiveBank * 4 + pad, velocity, on);
         drums.Configure(Settings);
         voices = new(output.Send, background, clock);
         voices.Failed += ex => RepeatFailed?.Invoke(ex);
@@ -105,6 +113,7 @@ internal sealed class BoomBapPreset : IDisposable
     {
         if (!Enum.IsDefined(mode)) throw new ArgumentOutOfRangeException(nameof(mode));
         if (Settings.Mode == mode) return;
+        Sequencer.Stop();
         ReleaseNotes();
         Settings.Mode = mode;
         previousChord = [];
@@ -137,8 +146,10 @@ internal sealed class BoomBapPreset : IDisposable
     public void ApplySettings(AppSettings settings)
     {
         settings.Validate();
+        Sequencer.Stop();
         ReleaseNotes();
         Settings = settings;
+        Sequencer.SetMappings(Settings.Banks);
         ConfigureDrums();
         SyncSwing();
         Changed?.Invoke();
@@ -146,6 +157,7 @@ internal sealed class BoomBapPreset : IDisposable
 
     public void PlayPause()
     {
+        if (Sequencer.IsPlaying) Sequencer.Stop();
         if (!output.IsOpen) { CommandSent?.Invoke("Play/Pause não enviado: selecione uma porta MIDI."); return; }
         output.Send(0xBF, 102, 127);
         CommandSent?.Invoke("Play/Pause enviado ao FL · requer script X-MIDI.");
@@ -162,6 +174,9 @@ internal sealed class BoomBapPreset : IDisposable
 
     public void SyncSwing()
     {
+        Sequencer.Swing = Settings.SwingPercent;
+        if (Sequencer.IsPlaying)
+        { CommandSent?.Invoke($"Swing local {Settings.SwingPercent}% · não envia swing ao FL durante o sequenciador."); return; }
         if (!output.IsOpen) { CommandSent?.Invoke("Swing salvo localmente; selecione uma porta MIDI para enviar."); return; }
         output.Send(0xBF, 103, (byte)Math.Round(Settings.SwingPercent * 127.0 / 100));
         CommandSent?.Invoke($"Swing global {Settings.SwingPercent}% enviado · requer script X-MIDI.");
@@ -180,8 +195,8 @@ internal sealed class BoomBapPreset : IDisposable
     }
     public void Dispose()
     {
-        try { drums.Dispose(); }
-        finally { voices.Dispose(); }
+        try { Sequencer.Dispose(); }
+        finally { try { drums.Dispose(); } finally { voices.Dispose(); } }
     }
     public void Analog(Gamepad gamepad)
     {
@@ -212,12 +227,14 @@ internal sealed class BoomBapPreset : IDisposable
     }
     public void Silence()
     {
+        Sequencer.Stop();
         ReleaseNotes();
         if (output.IsOpen) output.Send(0xB0, 123, 0);
         Reset();
     }
     public void Reset()
     {
+        Sequencer.Stop();
         ReleaseNotes();
         previousChord = [];
         downButtons.Clear();

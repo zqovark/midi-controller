@@ -94,6 +94,7 @@
                 <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <StackPanel>
                         <DockPanel>
+                            <CheckBox x:Name="SequenceToggle" DockPanel.Dock="Right" Content="STEP / LIVE" Foreground="#D0BCFF" VerticalAlignment="Center" Margin="8,0" Checked="SequenceViewChanged" Unchecked="SequenceViewChanged"/>
                             <ComboBox x:Name="ModeSelector" DockPanel.Dock="Right" Width="145" SelectionChanged="ModeSelectionChanged" AutomationProperties.Name="Modo musical">
                                 <ComboBoxItem Content="Drum Mode"/><ComboBoxItem Content="Sample Mode"/><ComboBoxItem Content="Chord Mode"/>
                             </ComboBox>
@@ -102,7 +103,8 @@
                         </DockPanel>
                         <local:MusicalModePanel x:Name="ModePanel" Visibility="Collapsed"/>
                     </StackPanel>
-                    <Viewbox Grid.Row="1" Stretch="Uniform" Margin="0,8">
+                    <DockPanel Grid.Row="1">
+                    <Viewbox x:Name="ControllerView" DockPanel.Dock="Bottom" Stretch="Uniform" Margin="0,8">
                         <Canvas Width="620" Height="370">
                             <Path Fill="{StaticResource Metal}" Stroke="#938F99" StrokeThickness="2" Data="M 125,65 C 75,65 60,110 43,175 L 15,285 C 5,340 60,358 91,318 L 150,255 L 468,255 L 527,318 C 560,358 615,340 603,285 L 578,175 C 560,110 545,65 495,65 Z"/>
                             <Border x:Name="LB" Canvas.Left="107" Canvas.Top="46" Width="125" Height="24" Background="#36343B" CornerRadius="8"><TextBlock Text="LB" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11"/></Border>
@@ -133,6 +135,8 @@
                             <TextBlock x:Name="RightEffectLabel" Canvas.Left="355" Canvas.Top="325" MaxWidth="225" TextTrimming="CharacterEllipsis" Text="EFEITO · CC 91" Foreground="#CCC2DC" FontSize="12"/>
                         </Canvas>
                     </Viewbox>
+                    <local:SequencerPanel x:Name="SequencePanel" Visibility="Collapsed"/>
+                    </DockPanel>
                     <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
                         <StackPanel><TextBlock Text="ANALÓGICO ESQUERDO" Foreground="{StaticResource Muted}" FontSize="10"/><TextBlock FontFamily="Consolas" x:Name="LeftValues" Text="X 0% · Y 0% · CC 64" Margin="0,7,0,0" FontSize="12"/></StackPanel>
                         <StackPanel Grid.Column="1"><TextBlock Text="ANALÓGICO DIREITO" Foreground="{StaticResource Muted}" FontSize="10"/><TextBlock FontFamily="Consolas" x:Name="RightValues" Text="X 0% · Y 0% · CC 64" Margin="0,7,0,0" FontSize="12"/></StackPanel>

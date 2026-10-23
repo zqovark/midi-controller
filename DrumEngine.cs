@@ -53,6 +53,8 @@ internal sealed class DrumEngine : IDisposable
     private readonly Dictionary<int, Voice> voices = [];
     private readonly Dictionary<int, byte> heldPads = [];
     private readonly HashSet<byte> sounding = [];
+    private readonly Dictionary<byte, int> notePads = [];
+    public event Action<int, byte, bool>? NotePlayed;
     private readonly Action<byte, byte, byte> send;
     private readonly Func<double> now;
     private readonly ITempoSource tempo;
@@ -140,13 +142,18 @@ internal sealed class DrumEngine : IDisposable
         if (sounding.Contains(note)) return;
         // Retain ownership even if the driver/event sink fails after delivering Note On.
         sounding.Add(note);
-        send(0x90, note, Velocity());
+        int pad = voices.First(v => v.Value.Note == note).Key;
+        notePads[note] = pad;
+        byte velocity = Velocity();
+        send(0x90, note, velocity);
+        NotePlayed?.Invoke(pad, velocity, true);
     }
     private void NoteOff(byte note)
     {
         if (!sounding.Contains(note)) return;
         send(0x80, note, 0);
         sounding.Remove(note);
+        if (notePads.Remove(note, out int pad)) NotePlayed?.Invoke(pad, 0, false);
     }
     private void ReleaseIfUnused(byte note)
     {

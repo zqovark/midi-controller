@@ -36,3 +36,7 @@ Testes do motor, sem dispositivos MIDI ou WPF: `dotnet run --project Tests/DrumM
 Selecione o modo ao lado do controle Xbox. Sample Mode oferece waveform, edição de regiões, cortes iguais/manuais/transientes e exportação WAV com reverse/pitch. Chord Mode oferece escalas, progressões de oito acordes, inversões, voicings abertos, presets e notas editáveis por pad. LT e os analógicos continuam disponíveis; RB + instrumento permanece exclusivo do Drum Mode.
 
 Cada modo mantém seus mapeamentos e configurações. Veja o [fluxo de carregamento e vínculos no FL Studio](FL-STUDIO.md#sample-mode-e-chord-mode). Áudio, regiões, instrumentos e efeitos não são carregados automaticamente no FL. O teste portável acima inclui também os modos, os acordes e o processamento WAV; não requer WPF, dispositivos ou FL Studio.
+
+## Step Sequencer / Live Loop Recording
+
+Em Drum Mode, **STEP / LIVE** abre a grade de oito instrumentos. Crie notas com o mouse ou grave camadas com o Xbox sobre o mesmo padrão; os eventos mantêm velocity, duração e microtiming em PPQ 960. Quantização não destrutiva, 16/32/64 passos por compasso, count-in, metrônomo MIDI configurável, Undo/Redo, biblioteca JSON e exportação `.mid` estão disponíveis. O transporte é local, sem sincronismo de clock/posição com o FL Studio; veja [operação e limites](FL-STUDIO.md#step-sequencer--live-loop).

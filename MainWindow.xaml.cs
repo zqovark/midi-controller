@@ -48,6 +48,7 @@ public partial class MainWindow : Window
             MidiStatus.Text = $"Envio MIDI interrompido: {ex.Message}";
         }));
         ModePanel.Attach(preset, RunCommand);
+        SequencePanel.Attach(preset, System.IO.Path.ChangeExtension(settingsStore.FilePath, "patterns.json"));
         UpdateMusicalControls();
         indicators = new()
         {
@@ -230,7 +231,7 @@ public partial class MainWindow : Window
                 labels[i].Text = $"{letters[i]} · {preset.PadDescription(i)}";
                 labels[i].ToolTip = labels[i].Text;
             }
-            SwingValue.Text = $"SWING GLOBAL · {preset.Settings.SwingPercent}%";
+            SwingValue.Text = $"SWING · {preset.Settings.SwingPercent}%";
             SwingStepLabel.Text = $"passo {preset.Settings.SwingStep}%";
             SwingSlider.TickFrequency = preset.Settings.SwingStep;
             SwingSlider.Value = preset.Settings.SwingPercent;
@@ -243,8 +244,24 @@ public partial class MainWindow : Window
             BpmSlider.Value = preset.Settings.RepeatBpm;
             UpdateDrumLabels();
             ModePanel.Refresh();
+            UpdateSequenceView();
         }
         finally { updatingMusic = false; }
+    }
+
+    private void UpdateSequenceView()
+    {
+        bool drum = preset.Settings.Mode == MusicalMode.Drum;
+        SequenceToggle.Visibility = drum ? Visibility.Visible : Visibility.Collapsed;
+        bool show = drum && SequenceToggle.IsChecked == true;
+        SequencePanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        ControllerView.Height = show ? 105 : double.NaN;
+    }
+    private void SequenceViewChanged(object sender, RoutedEventArgs e)
+    {
+        if (preset is null) return;
+        if (SequenceToggle.IsChecked != true) RunCommand(preset.Sequencer.Stop);
+        UpdateSequenceView();
     }
 
     private void ModeSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -344,14 +361,23 @@ public partial class MainWindow : Window
     {
         timer.Stop();
         saveTimer.Stop();
+        SequencePanel.Shutdown();
         try { preset.Silence(); }
         catch (InvalidOperationException) { }
-        finally
+        try { SequencePanel.SaveLibraryAsync().GetAwaiter().GetResult(); }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
         {
-            try { preset.Dispose(); }
-            catch (InvalidOperationException) { }
-            finally { midi.Dispose(); }
+            if (MessageBox.Show(this, ex.Message + "\nManter a janela aberta para salvar os padrões em JSON?",
+                "Biblioteca não salva", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+            {
+                e.Cancel = true; timer.Start(); SequencePanel.Resume();
+                if (settingsDirty && allowSaving) saveTimer.Start();
+                base.OnClosing(e); return;
+            }
         }
+        try { preset.Dispose(); }
+        catch (InvalidOperationException) { }
+        finally { midi.Dispose(); }
         if (settingsDirty && allowSaving)
         {
             try { settingsStore.SaveAsync(preset.Settings.Copy()).GetAwaiter().GetResult(); }

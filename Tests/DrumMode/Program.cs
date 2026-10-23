@@ -136,7 +136,7 @@ var tests = new (string Name, Action Check)[]
         finally { engine.Dispose(); }
         Check(hits >= 2 && offs == hits, "Todos os Note On encerrados ao fazer Join");
     })
-}.Concat(ModeChecks.All).ToArray();
+}.Concat(ModeChecks.All).Concat(SequenceChecks.All).ToArray();
 int failures = 0;
 foreach (var (name, check) in tests)
 {

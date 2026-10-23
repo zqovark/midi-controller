@@ -6,6 +6,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../SequencePattern.cs" Link="SequencePattern.cs" />
+    <Compile Include="../../SequenceEngine.cs" Link="SequenceEngine.cs" />
+    <Compile Include="../../SequenceMidiFile.cs" Link="SequenceMidiFile.cs" />
+    <Compile Include="../../MidiNoteOwnership.cs" Link="MidiNoteOwnership.cs" />
     <Compile Include="../../SampleAudio.cs" Link="SampleAudio.cs" />
     <Compile Include="../../ModeSettings.cs" Link="ModeSettings.cs" />
     <Compile Include="../../ChordGenerator.cs" Link="ChordGenerator.cs" />
