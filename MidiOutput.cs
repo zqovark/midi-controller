@@ -10,8 +10,9 @@ internal sealed record MidiPort(uint Id, string Name)
 
 internal sealed class MidiOutput : IDisposable
 {
+    private readonly object gate = new();
     private nint handle;
-    public bool IsOpen => handle != 0;
+    public bool IsOpen { get { lock (gate) return handle != 0; } }
     public event Action<byte, byte, byte>? Sent;
     public static IReadOnlyList<MidiPort> GetPorts()
     {
@@ -25,21 +26,30 @@ internal sealed class MidiOutput : IDisposable
     }
     public void Open(uint id)
     {
-        Dispose();
-        Check(midiOutOpen(out handle, id, 0, 0, 0));
+        lock (gate)
+        {
+            Dispose();
+            Check(midiOutOpen(out handle, id, 0, 0, 0));
+        }
     }
     public void Send(byte status, byte data1, byte data2)
     {
-        if (!IsOpen) return;
-        Check(midiOutShortMsg(handle, (uint)(status | data1 << 8 | data2 << 16)));
-        Sent?.Invoke(status, data1, data2);
+        lock (gate)
+        {
+            if (handle == 0) return;
+            Check(midiOutShortMsg(handle, (uint)(status | data1 << 8 | data2 << 16)));
+            Sent?.Invoke(status, data1, data2);
+        }
     }
     public void Dispose()
     {
-        if (handle == 0) return;
-        midiOutReset(handle);
-        midiOutClose(handle);
-        handle = 0;
+        lock (gate)
+        {
+            if (handle == 0) return;
+            midiOutReset(handle);
+            midiOutClose(handle);
+            handle = 0;
+        }
     }
     private static void Check(uint result)
     {

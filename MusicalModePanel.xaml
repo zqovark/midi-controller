@@ -1,0 +1,73 @@
+<UserControl x:Class="XMidi.MusicalModePanel"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:local="clr-namespace:XMidi">
+ <UserControl.Resources>
+  <Style TargetType="TextBox">
+   <Setter Property="Background" Value="#141218"/><Setter Property="Foreground" Value="#E6E0E9"/>
+   <Setter Property="BorderBrush" Value="#938F99"/><Setter Property="Padding" Value="4,3"/>
+  </Style>
+ </UserControl.Resources>
+ <StackPanel>
+  <StackPanel x:Name="ChordPanel" Visibility="Collapsed">
+   <WrapPanel Margin="0,5,0,0">
+    <ComboBox x:Name="ChordPreset" Width="142" Margin="0,0,5,0" AutomationProperties.Name="Preset harmônico"/>
+    <Button Content="Preset" Click="ChordPresetClicked" Padding="6,4" Margin="0,0,8,0"/>
+    <ComboBox x:Name="KeySelector" Width="65" Margin="0,0,5,0" AutomationProperties.Name="Tonalidade"/>
+    <ComboBox x:Name="ScaleSelector" Width="145" Margin="0,0,5,0" AutomationProperties.Name="Escala"/>
+    <ComboBox x:Name="OctaveSelector" Width="60" AutomationProperties.Name="Oitava"/>
+   </WrapPanel>
+   <WrapPanel Margin="0,6,0,0">
+    <ComboBox x:Name="KindSelector" Width="142" Margin="0,0,5,0" AutomationProperties.Name="Tipo ao gerar acordes"/>
+    <ComboBox x:Name="VoicingSelector" Width="140" Margin="0,0,8,0" AutomationProperties.Name="Inversão ou voicing"/>
+    <CheckBox x:Name="VoiceLeading" Content="Registro próximo" Foreground="#D0BCFF" VerticalAlignment="Center" ToolTip="Move o acorde por oitavas para aproximar seu registro do acorde anterior."/>
+   </WrapPanel>
+   <WrapPanel Margin="0,6,0,0">
+    <TextBlock Text="GRAUS" VerticalAlignment="Center" Margin="0,0,7,0" FontSize="10"/>
+    <TextBox x:Name="ProgressionInput" Width="175" VerticalContentAlignment="Center" AutomationProperties.Name="Oito graus da progressão"/>
+    <Button Content="Gerar progressão" ToolTip="Gera os oito acordes com o tipo selecionado e substitui notas explícitas." Click="GenerateChordsClicked" Padding="8,5" Margin="6,0"/>
+    <Button Content="Editar 8 acordes…" Click="ChordMappingClicked" Padding="8,5"/>
+   </WrapPanel>
+   <ItemsControl x:Name="ChordPads" Margin="0,6,0,0">
+    <ItemsControl.ItemTemplate><DataTemplate>
+     <Border Background="{Binding Color}" Padding="5,3" Margin="0,1">
+      <TextBlock Text="{Binding Text}" FontFamily="Consolas" FontSize="11" TextWrapping="Wrap"/>
+     </Border>
+    </DataTemplate></ItemsControl.ItemTemplate>
+   </ItemsControl>
+   <Canvas x:Name="Piano" Height="28" Margin="0,5" SizeChanged="PianoSizeChanged" ClipToBounds="True"/>
+   <TextBlock x:Name="ChordReadout" Text="Solte os pads para encerrar as notas." FontFamily="Consolas" FontSize="11" TextWrapping="Wrap"/>
+  </StackPanel>
+  <StackPanel x:Name="SamplePanel" Visibility="Collapsed">
+   <WrapPanel Margin="0,5,0,0">
+    <Button x:Name="LoadButton" Content="Selecionar WAV…" Click="LoadSampleClicked" Padding="8,5"/>
+    <ComboBox x:Name="SamplePreset" Width="140" Margin="6,0" AutomationProperties.Name="Preset de chopping"/>
+    <Button Content="Preset" Click="SamplePresetClicked" Padding="6,4"/>
+    <Button x:Name="ExportButton" Content="Exportar WAVs…" Click="ExportClicked" Margin="6,0,0,0" Padding="8,5"/>
+   </WrapPanel>
+   <TextBlock x:Name="SourceLabel" Text="Nenhum sample selecionado" FontSize="10" Margin="0,5" TextTrimming="CharacterEllipsis"/>
+   <local:WaveformView x:Name="Waveform" Height="105" Cursor="SizeWE"/>
+   <WrapPanel Margin="0,6,0,0">
+    <ComboBox x:Name="MethodSelector" Width="118" Margin="0,0,5,0" AutomationProperties.Name="Método de chopping"/>
+    <ComboBox x:Name="CountSelector" Width="55" Margin="0,0,5,0" AutomationProperties.Name="Número de regiões"/>
+    <Slider x:Name="SensitivitySlider" Minimum="0" Maximum="1" Value="0.5" Width="65" ToolTip="Sensibilidade de transientes" VerticalAlignment="Center"/>
+    <Button Content="Dividir" Click="DivideClicked" Padding="8,5" Margin="5,0"/>
+    <ComboBox x:Name="PlaybackSelector" Width="92" Margin="0,0,6,0" AutomationProperties.Name="Playback"/>
+    <CheckBox x:Name="ReverseToggle" Content="Reverse" Foreground="#D0BCFF" VerticalAlignment="Center"/>
+    <TextBlock Text=" Pitch " VerticalAlignment="Center" FontSize="10"/>
+    <TextBox x:Name="PitchInput" Width="32" VerticalContentAlignment="Center" AutomationProperties.Name="Pitch em semitons"/>
+   </WrapPanel>
+   <WrapPanel Margin="0,6,0,0">
+    <ComboBox x:Name="RegionSelector" Width="88" Margin="0,0,6,0" SelectionChanged="RegionSelectionChanged" AutomationProperties.Name="Região selecionada"/>
+    <TextBlock Text="Início s " VerticalAlignment="Center" FontSize="10"/>
+    <TextBox x:Name="StartInput" Width="60" VerticalContentAlignment="Center" AutomationProperties.Name="Início da região em segundos"/>
+    <TextBlock Text=" Fim s " VerticalAlignment="Center" FontSize="10"/>
+    <TextBox x:Name="EndInput" Width="60" VerticalContentAlignment="Center" AutomationProperties.Name="Fim da região em segundos"/>
+    <Button Content="Aplicar" Click="ApplySampleClicked" Padding="8,5" Margin="6,0"/>
+    <Button Content="Pads / efeitos…" Click="SampleMappingClicked" Padding="8,5"/>
+   </WrapPanel>
+   <TextBlock Text="LT: velocity · efeitos via CC exigem vínculo no FL · WAVs precisam ser carregados no instrumento." Foreground="#CAC4D0" FontSize="10" Margin="0,5,0,0" TextWrapping="Wrap"/>
+  </StackPanel>
+  <TextBlock x:Name="ModeStatus" Foreground="#D0BCFF" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,3"/>
+ </StackPanel>
+</UserControl>
