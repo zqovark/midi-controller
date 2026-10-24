@@ -11,14 +11,14 @@ internal sealed class ModeMappingWindow : Window
     private readonly List<(TextBox Name, TextBox Notes, TextBox Octave)> chordInputs = [];
     private readonly List<(ComboBox Region, TextBox Note)> sliceInputs = [];
     private readonly List<(CheckBox Enabled, TextBox Cc, ComboBox Stick)> effects = [];
-    private readonly TextBlock error = new() { Foreground = Brushes.LightSalmon, TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock error = new() { Foreground = new SolidColorBrush(Color.FromRgb(211, 95, 95)), TextWrapping = TextWrapping.Wrap };
     internal ModeMappingWindow(ChordSettings? chords, SampleSettings? samples, ResourceDictionary resources)
     {
         Chords = chords?.Copy(); Samples = samples?.Copy();
         Title = chords is null ? "Slices / CC" : "Oito acordes";
         Width = 690; Height = 630; MinWidth = 650; MinHeight = 500;
-        Background = new SolidColorBrush(Color.FromRgb(29, 27, 32));
-        Foreground = Brushes.White; WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        Background = new SolidColorBrush(Color.FromRgb(18, 18, 18));
+        Foreground = new SolidColorBrush(Color.FromRgb(190, 190, 190)); WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Resources.MergedDictionaries.Add(resources);
         var root = new DockPanel { Margin = new Thickness(16) }; Content = root;
         var bottom = new StackPanel(); DockPanel.SetDock(bottom, Dock.Bottom); root.Children.Add(bottom);
@@ -55,7 +55,7 @@ internal sealed class ModeMappingWindow : Window
             foreach (var effect in sample.Effects)
             {
                 var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 5, 0, 0) }; panel.Children.Add(row);
-                var enabled = new CheckBox { Content = effect.Name, IsChecked = effect.Enabled, Width = 145, VerticalAlignment = VerticalAlignment.Center, Foreground = Brushes.White };
+                var enabled = new CheckBox { Content = effect.Name, IsChecked = effect.Enabled, Width = 145, VerticalAlignment = VerticalAlignment.Center, Foreground = new SolidColorBrush(Color.FromRgb(190, 190, 190)) };
                 var cc = Input(effect.Cc.ToString(), 65);
                 var stick = new ComboBox { ItemsSource = new[] { "Esquerdo X", "Direito X" }, SelectedIndex = effect.Stick, Width = 150 };
                 row.Children.Add(enabled); row.Children.Add(cc); row.Children.Add(stick); effects.Add((enabled, cc, stick));

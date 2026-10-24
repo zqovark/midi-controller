@@ -4,8 +4,8 @@
  xmlns:local="clr-namespace:XMidi">
  <UserControl.Resources>
   <Style TargetType="TextBox">
-   <Setter Property="Background" Value="#141218"/><Setter Property="Foreground" Value="#E6E0E9"/>
-   <Setter Property="BorderBrush" Value="#938F99"/><Setter Property="Padding" Value="4,3"/>
+   <Setter Property="Background" Value="#121212"/><Setter Property="Foreground" Value="#BEBEBE"/>
+   <Setter Property="BorderBrush" Value="#333333"/><Setter Property="Padding" Value="4,3"/>
   </Style>
  </UserControl.Resources>
  <StackPanel>
@@ -20,7 +20,7 @@
    <WrapPanel Margin="0,6,0,0">
     <ComboBox x:Name="KindSelector" Width="142" Margin="0,0,5,0" AutomationProperties.Name="Tipo ao gerar acordes"/>
     <ComboBox x:Name="VoicingSelector" Width="140" Margin="0,0,8,0" AutomationProperties.Name="Inversão ou voicing"/>
-    <CheckBox x:Name="VoiceLeading" Content="Registro próximo" Foreground="#D0BCFF" VerticalAlignment="Center" ToolTip="Move o acorde por oitavas para aproximar seu registro do acorde anterior."/>
+    <CheckBox x:Name="VoiceLeading" Content="Registro próximo" Foreground="#E68E0D" VerticalAlignment="Center" ToolTip="Move o acorde por oitavas para aproximar seu registro do acorde anterior."/>
    </WrapPanel>
    <WrapPanel Margin="0,6,0,0">
     <TextBlock Text="GRAUS" VerticalAlignment="Center" Margin="0,0,7,0" FontSize="10"/>
@@ -53,7 +53,7 @@
     <Slider x:Name="SensitivitySlider" Minimum="0" Maximum="1" Value="0.5" Width="65" ToolTip="Sensibilidade de transientes" VerticalAlignment="Center"/>
     <Button Content="Dividir" Click="DivideClicked" Padding="8,5" Margin="5,0"/>
     <ComboBox x:Name="PlaybackSelector" Width="92" Margin="0,0,6,0" AutomationProperties.Name="Playback"/>
-    <CheckBox x:Name="ReverseToggle" Content="Reverse" Foreground="#D0BCFF" VerticalAlignment="Center"/>
+    <CheckBox x:Name="ReverseToggle" Content="Reverse" Foreground="#E68E0D" VerticalAlignment="Center"/>
     <TextBlock Text=" Pitch " VerticalAlignment="Center" FontSize="10"/>
     <TextBox x:Name="PitchInput" Width="32" VerticalContentAlignment="Center" AutomationProperties.Name="Pitch em semitons"/>
    </WrapPanel>
@@ -66,8 +66,8 @@
     <Button Content="Aplicar" Click="ApplySampleClicked" Padding="8,5" Margin="6,0"/>
     <Button Content="Pads / efeitos…" Click="SampleMappingClicked" Padding="8,5"/>
    </WrapPanel>
-   <TextBlock Text="LT: velocity · efeitos via CC exigem vínculo no FL · WAVs precisam ser carregados no instrumento." Foreground="#CAC4D0" FontSize="10" Margin="0,5,0,0" TextWrapping="Wrap"/>
+   <TextBlock Text="LT: velocity · efeitos via CC exigem vínculo no FL · WAVs precisam ser carregados no instrumento." Foreground="#8A8A8D" FontSize="10" Margin="0,5,0,0" TextWrapping="Wrap"/>
   </StackPanel>
-  <TextBlock x:Name="ModeStatus" Foreground="#D0BCFF" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,3"/>
+  <TextBlock x:Name="ModeStatus" Foreground="#E68E0D" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,3"/>
  </StackPanel>
 </UserControl>

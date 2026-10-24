@@ -21,9 +21,9 @@ public sealed class WaveformView : FrameworkElement
     {
         base.OnRender(dc);
         double width = ActualWidth, height = ActualHeight;
-        dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(20, 18, 24)), null, new Rect(0, 0, width, height));
+        dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(18, 18, 18)), null, new Rect(0, 0, width, height));
         if (width <= 0 || height <= 0) return;
-        var wave = new Pen(new SolidColorBrush(Color.FromRgb(176, 198, 213)), 1);
+        var wave = new Pen(new SolidColorBrush(Color.FromRgb(190, 190, 190)), 1);
         for (int i = 0; i < envelope.Length; i++)
         {
             double x = i * width / envelope.Length;
@@ -34,14 +34,14 @@ public sealed class WaveformView : FrameworkElement
             var region = settings.Regions[i]; double start = region.Start * width, end = region.End * width;
             bool selected = i == SelectedRegion;
             var color = selected ? Color.FromArgb(65, 208, 188, 255) : Color.FromArgb(16, 208, 188, 255);
-            var marker = new Pen(selected ? Brushes.Plum : Brushes.SlateGray, selected ? 2 : 1);
+            var marker = new Pen(selected ? new SolidColorBrush(Color.FromRgb(230, 142, 13)) : new SolidColorBrush(Color.FromRgb(85, 85, 85)), selected ? 2 : 1);
             dc.DrawRectangle(new SolidColorBrush(color), null, new Rect(start, 0, Math.Max(0, end - start), height));
             dc.DrawLine(marker, new(start, 0), new(start, height)); dc.DrawLine(marker, new(end, 0), new(end, height));
             string[] letters = ["A", "B", "X", "Y"];
             string pads = string.Join(",", settings.Pads.Select((p, index) => (p, index)).Where(p => p.p.Region == i)
                 .Select(p => $"{p.index / 4 + 1}{letters[p.index % 4]}"));
             var text = new FormattedText($"{i + 1} {pads}", System.Globalization.CultureInfo.CurrentCulture,
-                FlowDirection.LeftToRight, new Typeface("Consolas"), 10, Brushes.White, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+                FlowDirection.LeftToRight, new Typeface("Consolas"), 10, new SolidColorBrush(Color.FromRgb(190, 190, 190)), VisualTreeHelper.GetDpi(this).PixelsPerDip);
             dc.PushClip(new RectangleGeometry(new Rect(start, 0, Math.Max(0, end - start), height)));
             dc.DrawText(text, new Point(start + 4, selected ? 3 : height - 16)); dc.Pop();
         }

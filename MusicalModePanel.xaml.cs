@@ -88,7 +88,7 @@ public partial class MusicalModePanel : UserControl
         ChordPads.ItemsSource = Enumerable.Range(0, 4).Select(i => new
         {
             Text = $"{letters[i]} · {preset.PadDescription(i)}",
-            Color = activePads.Contains(i) ? "#4F378B" : "#211F26"
+            Color = activePads.Contains(i) ? "#631E1E" : "#1E1E1E"
         }).ToArray();
         DrawPiano();
     }
@@ -103,7 +103,7 @@ public partial class MusicalModePanel : UserControl
         {
             bool black = note % 12 is 1 or 3 or 6 or 8 or 10;
             var key = new Border { Width = Math.Max(1, width - 1), Height = black ? 18 : 27,
-                Background = playedNotes.Contains((byte)note) ? Brushes.Plum : black ? Brushes.DimGray : Brushes.LightGray,
+                Background = playedNotes.Contains((byte)note) ? new SolidColorBrush(Color.FromRgb(230, 142, 13)) : black ? Brushes.DimGray : Brushes.LightGray,
                 ToolTip = $"{ChordGenerator.NoteName(note)} · MIDI {note}" };
             Canvas.SetLeft(key, (note - first) * width); Piano.Children.Add(key);
         }

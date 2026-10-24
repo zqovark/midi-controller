@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -121,7 +121,7 @@ public partial class MainWindow : Window
         previousButtons = gamepad.Buttons;
         if (connected) preset.Analog(gamepad);
         foreach (var (button, indicator) in indicators)
-            indicator.Background = Brush((gamepad.Buttons & button) != 0 ? "#4F378B" : "#36343B");
+            indicator.Background = Brush((gamepad.Buttons & button) != 0 ? "#631E1E" : "#2A2A2A");
         UpdateStick(LeftPuck, gamepad.LeftThumbX, gamepad.LeftThumbY, Gamepad.LeftThumbDeadZone, (gamepad.Buttons & GamepadButtons.LeftThumb) != 0, LeftValues);
         UpdateStick(RightPuck, gamepad.RightThumbX, gamepad.RightThumbY, Gamepad.RightThumbDeadZone, (gamepad.Buttons & GamepadButtons.RightThumb) != 0, RightValues);
         LTBar.Value = gamepad.LeftTrigger * 100.0 / 255;
@@ -138,7 +138,7 @@ public partial class MainWindow : Window
         int x = ControllerReader.ThumbPercent(rawX, deadZone), y = ControllerReader.ThumbPercent(rawY, deadZone);
         Canvas.SetLeft(puck, 29 + x * 0.27);
         Canvas.SetTop(puck, 29 - y * 0.27);
-        puck.Fill = Brush(pressed ? "#D0BCFF" : "#65558F");
+        puck.Fill = Brush(pressed ? "#E68E0D" : "#555555");
         label.Text = $"X {x}% · Y {y}% · CC {(int)Math.Round((x + 100) * 127.0 / 200)}";
     }
 
@@ -222,7 +222,7 @@ public partial class MainWindow : Window
             string Effects(int stick) => string.Join(" / ", preset.Settings.Samples.Effects.Where(e => e.Enabled && e.Stick == stick).Select(e => $"{e.Name} CC {e.Cc}"));
             LeftEffectLabel.Text = preset.Settings.Mode == MusicalMode.Sample ? Effects(0) : "FILTRO · CC 74";
             RightEffectLabel.Text = preset.Settings.Mode == MusicalMode.Sample ? Effects(1) : "EFEITO · CC 91";
-            BankButton.Background = Brush(preset.ActiveBank == 0 ? "#D0BCFF" : "#CCC2DC");
+            BankButton.Background = Brush(preset.ActiveBank == 0 ? "#E68E0D" : "#BEBEBE");
             var labels = new[] { MapA, MapB, MapX, MapY };
             var letters = new[] { "A", "B", "X", "Y" };
             for (int i = 0; i < 4; i++)
