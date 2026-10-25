@@ -79,9 +79,9 @@ internal static class ModeChecks
         {
             var output=new MidiOutput(); using var p=new BoomBapPreset(output,background:false);
             p.Button(GamepadButtons.RightShoulder,true); p.Button(GamepadButtons.A,true); Check(p.IsRepeating,"Drum ativo");
-            p.ToggleBank(); p.SetMode(MusicalMode.Chord); Check(!p.IsRepeating && p.ActiveBank==0,"Modo novo / repeat parado");
+            p.Button(GamepadButtons.A,false); p.Button(GamepadButtons.RightShoulder,false); p.ToggleBank(); p.SetMode(MusicalMode.Chord); Check(!p.IsRepeating && p.ActiveBank==0,"Modo novo / repeat parado");
             p.Button(GamepadButtons.A,false); p.Button(GamepadButtons.A,true);
-            Check(p.ActiveNotes.Length>=4,"Acorde enviado"); p.ToggleBank(); Check(p.ActiveNotes.Length==0,"Banco encerra acorde");
+            Check(p.ActiveNotes.Length>=4,"Acorde enviado"); p.ToggleBank(); Check(p.ActiveNotes.Length>0,"Banco recusado com acorde pressionado"); p.Button(GamepadButtons.A,false); p.ToggleBank(); Check(p.ActiveNotes.Length==0,"Banco aceito após soltar");
             p.SetMode(MusicalMode.Drum); Check(p.ActiveBank==1 && p.Settings.Banks[1][0].Note==37,"Banco Drum preservado");
             p.SetMode(MusicalMode.Chord); Check(p.ActiveBank==1,"Banco Chord preservado");
             p.Button(GamepadButtons.A,false); p.SetTrigger(255); p.Button(GamepadButtons.A,true);
@@ -109,7 +109,10 @@ internal static class ModeChecks
             for(int i=0;i<4;i++){s.Samples.Effects[i].Enabled=true;s.Samples.Effects[i].Cc=20+i;s.Samples.Effects[i].Stick=i%2;}
             var output=new MidiOutput();using var p=new BoomBapPreset(output,s,false);
             p.Analog(new Gamepad { LeftThumbX=short.MinValue,RightThumbX=short.MaxValue });
-            for(int i=0;i<4;i++) Check(output.Messages.Contains(((byte)0xB0,(byte)(20+i),(byte)(i%2==0?0:127))),"CC correto");
+            Check(output.Messages.Count==0,"Sem salto ao conectar");
+            p.PrepareEffects(); p.Analog(new Gamepad { LeftThumbX=short.MinValue,RightThumbX=short.MaxValue });
+            for(int i=0;i<4;i++) Check(output.Messages.Contains(((byte)0xB0,(byte)(20+i),(byte)(i%2==0?59:69))),"CC relativo correto");
+            int count=output.Messages.Count; p.Analog(default); Check(output.Messages.Count==count,"Centro mantém valor");
         }),
         ("Equal Slices 2/4/8: cobertura, limites e pequenos samples", () =>
         {

@@ -12,6 +12,12 @@ namespace XMidi;
 public partial class MainWindow : Window
 {
     private readonly ControllerReader reader = new();
+    private readonly MidiInput feedback = new();
+    private readonly FlLink fl;
+    private readonly PerformanceSession performance;
+    private volatile bool monitorEnabled;
+    private long lastUiRefresh;
+    private string menuSignature = "";
     private readonly MidiOutput midi = new();
     private readonly BoomBapPreset preset;
     private readonly DispatcherTimer timer;
@@ -22,7 +28,6 @@ public partial class MainWindow : Window
     private bool allowSaving;
     private bool updatingMusic;
     private uint? activeController;
-    private GamepadButtons previousButtons;
     private long messageCount;
     private bool refreshing;
     private static readonly Dictionary<string, SolidColorBrush> brushes = new();
@@ -37,6 +42,13 @@ public partial class MainWindow : Window
         allowSaving = warning is null;
         if (warning is not null) SettingsStatus.Text = warning + " Abra Configurar para salvar novos valores.";
         preset = new(midi, settings);
+        Func<double> clock = () => System.Diagnostics.Stopwatch.GetTimestamp() / (double)System.Diagnostics.Stopwatch.Frequency;
+        fl = new(midi.Send, clock);
+        performance = new(preset, fl, clock);
+        DrumChannel.Text = (settings.ModeChannels[0] + 1).ToString();
+        SampleChannel.Text = (settings.ModeChannels[1] + 1).ToString();
+        ChordChannel.Text = (settings.ModeChannels[2] + 1).ToString();
+        Preparation.Collapsed += (_, _) => monitorEnabled = false;
         saveTimer = new(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(600) };
         saveTimer.Tick += async (_, _) => { saveTimer.Stop(); await SaveSettingsAsync(); };
         preset.Changed += () => { UpdateMusicalControls(); ScheduleSave(); };
@@ -61,6 +73,7 @@ public partial class MainWindow : Window
         midi.Sent += (status, data1, data2) =>
         {
             // MIDI is sent on the scheduler thread; the monitor must never block it.
+            if (!monitorEnabled) return;
             var stamp = DateTime.Now;
             void AddMessage()
             {
@@ -77,7 +90,14 @@ public partial class MainWindow : Window
         timer = new(DispatcherPriority.Input) { Interval = TimeSpan.FromMilliseconds(8) };
         timer.Tick += (_, _) =>
         {
-            try { reader.Poll(); }
+            try
+            {
+                feedback.Drain(fl.Receive);
+                performance.Tick();
+                reader.Poll();
+                if (Environment.TickCount64 - lastUiRefresh >= 50)
+                { lastUiRefresh = Environment.TickCount64; UpdatePerformance(); }
+            }
             catch (Exception ex) when (ex is InvalidOperationException or TypeInitializationException or PlatformNotSupportedException)
             {
                 midi.Dispose();
@@ -87,6 +107,7 @@ public partial class MainWindow : Window
             }
         };
         RefreshPorts();
+        UpdatePerformance();
         timer.Start();
     }
 
@@ -95,31 +116,16 @@ public partial class MainWindow : Window
         if (activeController is null && connected)
         {
             activeController = index;
-            previousButtons = GamepadButtons.None;
             ControllerStatus.Text = $"● Controle {index + 1} conectado";
         }
         if (activeController != index) return;
         if (!connected)
         {
-            preset.Silence();
             gamepad = default;
             activeController = null;
             ControllerStatus.Text = "● Aguardando controle";
         }
-        preset.SetTrigger(gamepad.LeftTrigger);
-        var changed = gamepad.Buttons ^ previousButtons;
-        // Release first; RB pressed alongside a pad release must not retrigger that pad.
-        foreach (var button in Enum.GetValues<GamepadButtons>())
-            if ((changed & button) != 0 && (gamepad.Buttons & button) == 0)
-                preset.Button(button, false);
-        // Apply RB before new presses so simultaneous RB + pad uses repeat from the first hit.
-        if ((changed & gamepad.Buttons & GamepadButtons.RightShoulder) != 0)
-            preset.Button(GamepadButtons.RightShoulder, true);
-        foreach (var button in Enum.GetValues<GamepadButtons>().Where(b => b != GamepadButtons.RightShoulder))
-            if ((changed & gamepad.Buttons & button) != 0)
-                preset.Button(button, true);
-        previousButtons = gamepad.Buttons;
-        if (connected) preset.Analog(gamepad);
+        performance.Sample(connected, gamepad);
         foreach (var (button, indicator) in indicators)
             indicator.Background = Brush((gamepad.Buttons & button) != 0 ? "#631E1E" : "#2A2A2A");
         UpdateStick(LeftPuck, gamepad.LeftThumbX, gamepad.LeftThumbY, Gamepad.LeftThumbDeadZone, (gamepad.Buttons & GamepadButtons.LeftThumb) != 0, LeftValues);
@@ -127,9 +133,9 @@ public partial class MainWindow : Window
         LTBar.Value = gamepad.LeftTrigger * 100.0 / 255;
         RTBar.Value = gamepad.RightTrigger * 100.0 / 255;
         LTLabel.Text = $"LT {LTBar.Value:0}%";
-        RTLabel.Text = $"RT {RTBar.Value:0}%";
+        RTLabel.Text = $"RT {RTBar.Value:0}% · {(preset.Settings.Mode == MusicalMode.Drum ? "SNARE" : "sem função")}";
         VelocityReadout.Text = $"LT {LTBar.Value:0}% · VEL {preset.CurrentVelocity}";
-        RepeatReadout.Text = preset.IsRepeating ? "● REPETINDO" : "RB + A/B/X/Y";
+        RepeatReadout.Text = $"{(preset.IsRepeating ? "● REPETINDO" : "RB + pads")} · {preset.Settings.RepeatDivision}";
         ModePanel.ShowPerformance(gamepad.Buttons);
     }
 
@@ -139,7 +145,7 @@ public partial class MainWindow : Window
         Canvas.SetLeft(puck, 29 + x * 0.27);
         Canvas.SetTop(puck, 29 - y * 0.27);
         puck.Fill = Brush(pressed ? "#E68E0D" : "#555555");
-        label.Text = $"X {x}% · Y {y}% · CC {(int)Math.Round((x + 100) * 127.0 / 200)}";
+        label.Text = $"X {x}% · Y {y}% (sem função)";
     }
 
     private static SolidColorBrush Brush(string color)
@@ -160,7 +166,8 @@ public partial class MainWindow : Window
         string? oldName = (Ports.SelectedItem as MidiPort)?.Name;
         try
         {
-            preset.Silence();
+            performance.Stop();
+            fl.Connect(false); feedback.Dispose();
             midi.Dispose();
             refreshing = true;
             var ports = MidiOutput.GetPorts();
@@ -168,6 +175,9 @@ public partial class MainWindow : Window
             Ports.SelectedItem = ports.FirstOrDefault(p => p.Name == (oldName ?? preset.Settings.PreferredPort))
                 ?? ports.FirstOrDefault(p => p.Name.Equals("X-MIDI", StringComparison.OrdinalIgnoreCase))
                 ?? ports.FirstOrDefault(p => p.Name.Contains("loopMIDI", StringComparison.OrdinalIgnoreCase));
+            var inputs = MidiInput.GetPorts();
+            FeedbackPorts.ItemsSource = inputs;
+            FeedbackPorts.SelectedItem = inputs.FirstOrDefault(p => p.Name == preset.Settings.FeedbackPort);
             MidiStatus.Text = ports.Count == 0 ? "Nenhuma porta MIDI disponível" : "Selecione a porta do loopMIDI";
         }
         catch (InvalidOperationException ex) { MidiStatus.Text = ex.Message; }
@@ -184,26 +194,76 @@ public partial class MainWindow : Window
     {
         try
         {
-            preset.Silence();
+            performance.Stop();
+            fl.Connect(false); feedback.Dispose();
             midi.Dispose();
             if (Ports.SelectedItem is not MidiPort port) return;
             midi.Open(port.Id);
             preset.Reset();
-            preset.SyncSwing();
+            OpenFeedback();
             if (preset.Settings.PreferredPort != port.Name)
             {
                 preset.Settings.PreferredPort = port.Name;
                 ScheduleSave();
             }
-            MidiStatus.Text = $"Conectado · {port.Name} · canal 1";
+            MidiStatus.Text = $"Saída {port.Name} · retorno {(feedback.IsOpen ? "aberto" : "ausente")}";
         }
         catch (InvalidOperationException ex) { midi.Dispose(); MidiStatus.Text = ex.Message; }
     }
 
     private void SilenceClicked(object sender, RoutedEventArgs e)
     {
-        try { preset.Silence(); }
+        try { performance.Stop(); }
         catch (InvalidOperationException ex) { midi.Dispose(); MidiStatus.Text = ex.Message; }
+    }
+
+    private void FeedbackSelected(object sender, SelectionChangedEventArgs e)
+    { if (!refreshing && performance is not null) RunCommand(OpenFeedback); }
+    private void OpenFeedback()
+    {
+        performance.Stop(); fl.Connect(false); feedback.Dispose();
+        if (FeedbackPorts.SelectedItem is not MidiPort input || Ports.SelectedItem is not MidiPort output || !midi.IsOpen) return;
+        if (input.Name.Equals(output.Name, StringComparison.OrdinalIgnoreCase))
+        { MidiStatus.Text = "Escolha duas portas virtuais distintas para evitar loop"; return; }
+        feedback.Open(input.Id);
+        preset.Settings.FeedbackPort = input.Name; ScheduleSave();
+        fl.Connect(true);
+    }
+    private void PanelClicked(object sender, RoutedEventArgs e) => RunCommand(performance.TogglePanel);
+    private void PreparationOpened(object sender, RoutedEventArgs e)
+    {
+        monitorEnabled = true;
+        if (performance is not null) RunCommand(performance.Stop);
+    }
+    private void RecordingPreparationChanged(object sender, RoutedEventArgs e)
+    { if (performance is not null) performance.RecordingPrepared = RecordingPrepared.IsChecked == true; }
+    private void ChannelsClicked(object sender, RoutedEventArgs e)
+    {
+        if (!int.TryParse(DrumChannel.Text, out int d) || !int.TryParse(SampleChannel.Text, out int s)
+            || !int.TryParse(ChordChannel.Text, out int c) || new[] { d, s, c }.Any(v => v is < 1 or > 127))
+        { SettingsStatus.Text = "Use canais FL de 1 a 127"; return; }
+        RunCommand(performance.Stop);
+        preset.Settings.ModeChannels = [d - 1, s - 1, c - 1];
+        ScheduleSave(); UpdateMusicalControls();
+        SettingsStatus.Text = "Canais salvos; confirme Modo / canal no painel do controle";
+    }
+    private void EffectsClicked(object sender, RoutedEventArgs e)
+    { RunCommand(preset.PrepareEffects); UpdateMusicalControls(); }
+    private void UpdatePerformance()
+    {
+        PerformanceStatus.Text = performance.Status;
+        PerformanceHint.Text = performance.Message + " · " + fl.Notice;
+        DedicatedReadout.Text = preset.Settings.Mode == MusicalMode.Drum
+            ? $"LB · {preset.Settings.Banks[0][0].Name}    RT · {preset.Settings.Banks[0][1].Name}    {(preset.Settings.FullLevel ? "FULL LEVEL 127" : "LT · ghost notes")}" : "LT · dinâmica dos pads";
+        CommandPanel.Visibility = performance.PanelOpen ? Visibility.Visible : Visibility.Collapsed;
+        if (performance.PanelOpen)
+        {
+            var items = performance.MenuItems;
+            string signature = string.Join("|", items);
+            if (signature != menuSignature) { CommandList.ItemsSource = items; menuSignature = signature; }
+            CommandList.SelectedIndex = performance.SelectedRow;
+        }
+        if (!performance.RecordingPrepared && RecordingPrepared.IsChecked == true) RecordingPrepared.IsChecked = false;
     }
 
     private void UpdateMusicalControls()
@@ -211,17 +271,16 @@ public partial class MainWindow : Window
         updatingMusic = true;
         try
         {
-            BankLabel.Text = $"↓ Banco {preset.ActiveBank + 1}";
-            BankDescription.Text = $"{preset.Settings.Mode.ToString().ToUpperInvariant()} · BANCO {preset.ActiveBank + 1} · CANAL 1";
+            BankLabel.Text = $"Banco {preset.ActiveBank + 1}";
+            BankDescription.Text = $"{preset.Settings.Mode.ToString().ToUpperInvariant()} · BANCO {preset.ActiveBank + 1} · MIDI 1 · destino FL {preset.Settings.ModeChannels[(int)preset.Settings.Mode] + 1}";
             ModeSelector.SelectedIndex = (int)preset.Settings.Mode;
             ModeCaption.Text = preset.Settings.Mode switch
             { MusicalMode.Sample => "Waveform / slices", MusicalMode.Chord => "Acordes / notas MIDI", _ => "Entradas em tempo real" };
             MappingTitle.Text = preset.Settings.Mode switch
             { MusicalMode.Sample => "Slices nos pads", MusicalMode.Chord => "Acordes nos pads", _ => "Mapeamento de notas" };
             DrumRepeatControls.Visibility = preset.Settings.Mode == MusicalMode.Drum ? Visibility.Visible : Visibility.Collapsed;
-            string Effects(int stick) => string.Join(" / ", preset.Settings.Samples.Effects.Where(e => e.Enabled && e.Stick == stick).Select(e => $"{e.Name} CC {e.Cc}"));
-            LeftEffectLabel.Text = preset.Settings.Mode == MusicalMode.Sample ? Effects(0) : "FILTRO · CC 74";
-            RightEffectLabel.Text = preset.Settings.Mode == MusicalMode.Sample ? Effects(1) : "EFEITO · CC 91";
+            LeftEffectLabel.Text = preset.EffectsPrepared ? "X · ajuste relativo" : "EFEITOS DESATIVADOS";
+            RightEffectLabel.Text = preset.EffectsPrepared ? "Centro mantém valor" : "Preparar para ativar";
             BankButton.Background = Brush(preset.ActiveBank == 0 ? "#E68E0D" : "#BEBEBE");
             var labels = new[] { MapA, MapB, MapX, MapY };
             var letters = new[] { "A", "B", "X", "Y" };
@@ -250,7 +309,8 @@ public partial class MainWindow : Window
     private void ModeSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (updatingMusic || preset is null || ModeSelector.SelectedIndex < 0) return;
-        RunCommand(() => preset.SetMode((MusicalMode)ModeSelector.SelectedIndex));
+        RunCommand(() => performance.SelectMode((MusicalMode)ModeSelector.SelectedIndex));
+        UpdateMusicalControls();
         ModePanel.ShowPerformance(GamepadButtons.None);
     }
 
@@ -286,7 +346,7 @@ public partial class MainWindow : Window
         catch (InvalidOperationException ex) { midi.Dispose(); preset.Reset(); MidiStatus.Text = ex.Message; }
     }
     private void BankClicked(object sender, RoutedEventArgs e) => RunCommand(preset.ToggleBank);
-    private void PlayPauseClicked(object sender, RoutedEventArgs e) => RunCommand(preset.PlayPause);
+    private void PlayPauseClicked(object sender, RoutedEventArgs e) => RunCommand(performance.PlayStop);
     private void SwingDownClicked(object sender, RoutedEventArgs e) => RunCommand(() => preset.SetSwing(preset.Settings.SwingPercent - preset.Settings.SwingStep));
     private void SwingUpClicked(object sender, RoutedEventArgs e) => RunCommand(() => preset.SetSwing(preset.Settings.SwingPercent + preset.Settings.SwingStep));
     private void SwingValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -296,6 +356,7 @@ public partial class MainWindow : Window
 
     private async void ConfigureClicked(object sender, RoutedEventArgs e)
     {
+        RunCommand(performance.Stop);
         if (preset.Settings.Mode != MusicalMode.Drum)
         {
             var mapping = new ModeMappingWindow(preset.Settings.Mode == MusicalMode.Chord ? preset.Settings.Chords : null,
@@ -331,7 +392,7 @@ public partial class MainWindow : Window
         try
         {
             await settingsStore.SaveAsync(preset.Settings.Copy());
-            SettingsStatus.Text = "Configurações salvas · ↑ Play/Pause · ↓ Banco · ←/→ Swing";
+            SettingsStatus.Text = "Configurações salvas · Menu transporte · View comandos · ←/→ banco";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -344,13 +405,13 @@ public partial class MainWindow : Window
     {
         timer.Stop();
         saveTimer.Stop();
-        try { preset.Silence(); }
+        try { performance.Stop(); }
         catch (InvalidOperationException) { }
         finally
         {
             try { preset.Dispose(); }
             catch (InvalidOperationException) { }
-            finally { midi.Dispose(); }
+            finally { fl.Connect(false); feedback.Dispose(); midi.Dispose(); }
         }
         if (settingsDirty && allowSaving)
         {

@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../FlLink.cs" Link="FlLink.cs" />
+    <Compile Include="../../PerformanceSession.cs" Link="PerformanceSession.cs" />
     <Compile Include="../../SampleAudio.cs" Link="SampleAudio.cs" />
     <Compile Include="../../ModeSettings.cs" Link="ModeSettings.cs" />
     <Compile Include="../../ChordGenerator.cs" Link="ChordGenerator.cs" />

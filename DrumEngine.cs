@@ -71,7 +71,7 @@ internal sealed class DrumEngine : IDisposable
     }
     public bool IsRepeating { get { lock (gate) return voices.Values.Any(v => v.Repeating); } }
     public byte CurrentVelocity { get { lock (gate) return Velocity(); } }
-    private byte Velocity() => DrumTiming.Velocity(lt, settings.DefaultVelocity, settings.MinimumVelocity, settings.VelocityCurve);
+    private byte Velocity() => settings.FullLevel ? (byte)127 : DrumTiming.Velocity(lt, settings.DefaultVelocity, settings.MinimumVelocity, settings.VelocityCurve);
 
     public void Configure(AppSettings value)
     {
@@ -101,6 +101,7 @@ internal sealed class DrumEngine : IDisposable
             {
                 foreach (var (pad, note) in heldPads)
                 {
+                    if (pad >= 4) continue; // Dedicated kick/snare are always manual.
                     if (!voices.TryGetValue(pad, out var v))
                     {
                         v = new(note, true, now() + Interval());
@@ -127,7 +128,7 @@ internal sealed class DrumEngine : IDisposable
             else if (!voices.ContainsKey(pad))
             {
                 heldPads[pad] = note;
-                bool repeat = rb && settings.NoteRepeatEnabled;
+                bool repeat = pad < 4 && rb && settings.NoteRepeatEnabled;
                 voices.Add(pad, new(note, repeat, now() + Interval()));
                 NoteOn(note);
                 if (repeat) StartWorker();

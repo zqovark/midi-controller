@@ -32,10 +32,14 @@ internal sealed class AppSettings
     public ChordSettings Chords { get; set; } = MusicalPresets.Chord(0);
     public SampleSettings Samples { get; set; } = new();
     public string? PreferredPort { get; set; }
+    public string? FeedbackPort { get; set; } = "X-MIDI Return";
+    public int[] ModeChannels { get; set; } = [1, 0, 2]; // Existing template: Sampler, FPC; Chord must be prepared.
+    public bool FullLevel { get; set; }
 
     public AppSettings Copy() => new()
     {
         Mode = Mode, Chords = Chords.Copy(), Samples = Samples.Copy(),
+        FeedbackPort = FeedbackPort, ModeChannels = (int[])ModeChannels.Clone(), FullLevel = FullLevel,
         Version = Version, Banks = Banks.Select(bank => bank.Select(pad => pad.Copy()).ToArray()).ToArray(),
         SwingPercent = SwingPercent, SwingStep = SwingStep, PreferredPort = PreferredPort,
         DefaultVelocity = DefaultVelocity, MinimumVelocity = MinimumVelocity, VelocityCurve = VelocityCurve,
@@ -44,6 +48,8 @@ internal sealed class AppSettings
 
     public void Validate()
     {
+        if (ModeChannels is not { Length: 3 } || ModeChannels.Any(c => c is < 0 or > 126))
+            throw new InvalidDataException("Configure três canais FL entre 1 e 127.");
         if (!Enum.IsDefined(Mode) || Chords is null || Samples is null)
             throw new InvalidDataException("Modo ou configuração musical inválidos.");
         Chords.Validate(); Samples.Validate();

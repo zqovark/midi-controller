@@ -78,11 +78,13 @@ var tests = new (string Name, Action Check)[]
         var output = new MidiOutput(); using var preset = new BoomBapPreset(output, background: false);
         preset.SetTrigger(255); preset.Button(GamepadButtons.RightShoulder, true); preset.Button(GamepadButtons.A, true);
         Check(preset.IsRepeating && output.Messages[^1] == (0x90,36,30), "RB e LT");
-        preset.ToggleBank(); Check(!preset.IsRepeating && output.Messages[^1] == (0x80,36,0), "Troca encerra");
-        preset.Button(GamepadButtons.A, false); preset.Button(GamepadButtons.A, true);
-        Check(preset.IsRepeating && output.Messages[^1].N == 37, "RB segurado funciona no banco 2");
-        preset.Silence(); Check(!preset.IsRepeating && output.Messages.Contains((0x80,37,0)), "Desconexão encerra vozes");
-        Check(output.Messages[^1] == (0xB0,123,0), "All Notes Off");
+        preset.ToggleBank(); Check(preset.ActiveBank == 0 && preset.IsRepeating, "Troca recusada sem pendência");
+        preset.Button(GamepadButtons.A, false); preset.Button(GamepadButtons.RightShoulder, false);
+        Check(preset.ActiveBank == 0, "Soltar não troca banco automaticamente");
+        preset.ToggleBank(); Check(preset.ActiveBank == 1, "Troca aceita após soltar");
+        preset.Button(GamepadButtons.A, true); Check(output.Messages[^1].N == 37, "Banco 2");
+        preset.Silence(); Check(!preset.IsRepeating && output.Messages.Contains((0x80,37,0)), "Silêncio encerra vozes");
+        Check(output.Messages.TakeLast(2).SequenceEqual(new (byte,byte,byte)[] {(0xB0,123,0),(0xB0,120,0)}), "All Notes / Sound Off");
         preset.Button(GamepadButtons.A, true); preset.Reset();
         Check(output.Messages[^1] == (0x80,37,0), "Reset encerra notas");
     }),
@@ -136,7 +138,7 @@ var tests = new (string Name, Action Check)[]
         finally { engine.Dispose(); }
         Check(hits >= 2 && offs == hits, "Todos os Note On encerrados ao fazer Join");
     })
-}.Concat(ModeChecks.All).ToArray();
+}.Concat(ModeChecks.All).Concat(SessionChecks.All).ToArray();
 int failures = 0;
 foreach (var (name, check) in tests)
 {

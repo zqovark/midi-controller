@@ -75,9 +75,9 @@ internal sealed class SampleSettings
     public SlicePad[] Pads { get; set; } = Enumerable.Range(0, 8).Select(i => new SlicePad { Region = i, Note = 60 + i }).ToArray();
     public EffectMapping[] Effects { get; set; } =
     [
-        new() { Name = "Low-pass", Enabled = true, Cc = 74, Stick = 0 },
+        new() { Name = "Low-pass", Cc = 74, Stick = 0 },
         new() { Name = "High-pass", Cc = 71, Stick = 0 },
-        new() { Name = "Reverb", Enabled = true, Cc = 91, Stick = 1 },
+        new() { Name = "Reverb", Cc = 91, Stick = 1 },
         new() { Name = "Delay", Cc = 94, Stick = 1 }
     ];
     public static SliceRegion[] EqualRegions(int count) => Enumerable.Range(0, count)

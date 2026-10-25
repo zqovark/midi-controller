@@ -18,6 +18,9 @@ internal sealed class BoomBapPreset : IDisposable
     private readonly HashSet<GamepadButtons> downButtons = [];
     private readonly int[] lastCc = [-1, -1, -1, -1];
     private readonly long[] lastCcTime = new long[4];
+    private bool rt;
+    public bool EffectsPrepared { get; private set; }
+    public bool MusicalInputsHeld => rt || downButtons.Any(b => PadIndex(b) >= 0 || b == GamepadButtons.LeftShoulder || b == GamepadButtons.RightShoulder);
     public AppSettings Settings { get; private set; }
     public int ActiveBank => banks[(int)Settings.Mode];
     public event Action? Changed;
@@ -48,6 +51,7 @@ internal sealed class BoomBapPreset : IDisposable
         {
             downButtons.Remove(button);
             if (button == GamepadButtons.RightShoulder) drums.Shoulder(false);
+            if (button == GamepadButtons.LeftShoulder) drums.Pad(4, 0, false);
             int releasedPad = PadIndex(button);
             if (releasedPad >= 0)
             {
@@ -61,10 +65,13 @@ internal sealed class BoomBapPreset : IDisposable
         { if (Settings.Mode == MusicalMode.Drum) drums.Shoulder(true); return; }
         switch (button)
         {
-            case GamepadButtons.DPadDown: ToggleBank(); return;
-            case GamepadButtons.DPadUp: PlayPause(); return;
-            case GamepadButtons.DPadLeft: SetSwing(Settings.SwingPercent - Settings.SwingStep); return;
-            case GamepadButtons.DPadRight: SetSwing(Settings.SwingPercent + Settings.SwingStep); return;
+            case GamepadButtons.DPadLeft: SelectBank(0); return;
+            case GamepadButtons.DPadRight: SelectBank(1); return;
+            case GamepadButtons.DPadUp: ChangeDivision(1); return;
+            case GamepadButtons.DPadDown: ChangeDivision(-1); return;
+            case GamepadButtons.LeftShoulder:
+                if (Settings.Mode == MusicalMode.Drum && output.IsOpen) drums.Pad(4, (byte)Settings.Banks[0][0].Note, true);
+                return;
         }
         int pad = PadIndex(button);
         if (!output.IsOpen || pad < 0) return;
@@ -95,11 +102,35 @@ internal sealed class BoomBapPreset : IDisposable
     };
 
     public void ToggleBank()
+        => SelectBank(1 - ActiveBank);
+
+    public void SelectBank(int bank)
     {
+        if (bank == ActiveBank) return;
+        if (MusicalInputsHeld) { CommandSent?.Invoke("Solte pads, LB, RT e RB antes de trocar banco."); return; }
         ReleaseNotes();
-        banks[(int)Settings.Mode] = 1 - ActiveBank;
+        banks[(int)Settings.Mode] = Math.Clamp(bank, 0, 1);
         Changed?.Invoke();
     }
+
+    public void ChangeDivision(int delta)
+    {
+        if (Settings.Mode != MusicalMode.Drum || downButtons.Contains(GamepadButtons.RightShoulder)) return;
+        Settings.RepeatDivision = (RepeatDivision)Math.Clamp((int)Settings.RepeatDivision + delta, 0, 6);
+        ConfigureDrums(); Changed?.Invoke();
+    }
+
+    public void RightTrigger(byte value)
+    {
+        bool pressed = rt ? value > 70 : value >= 100;
+        if (pressed == rt) return;
+        rt = pressed;
+        if (Settings.Mode == MusicalMode.Drum && output.IsOpen)
+            drums.Pad(5, (byte)Settings.Banks[0][1].Note, pressed);
+    }
+
+    public void SetFullLevel(bool enabled)
+    { Settings.FullLevel = enabled; ConfigureDrums(); Changed?.Invoke(); }
 
     public void SetMode(MusicalMode mode)
     {
@@ -108,6 +139,7 @@ internal sealed class BoomBapPreset : IDisposable
         ReleaseNotes();
         Settings.Mode = mode;
         previousChord = [];
+        EffectsPrepared = false;
         Array.Fill(lastCc, -1); Array.Clear(lastCcTime);
         Changed?.Invoke();
     }
@@ -146,9 +178,7 @@ internal sealed class BoomBapPreset : IDisposable
 
     public void PlayPause()
     {
-        if (!output.IsOpen) { CommandSent?.Invoke("Play/Pause não enviado: selecione uma porta MIDI."); return; }
-        output.Send(0xBF, 102, 127);
-        CommandSent?.Invoke("Play/Pause enviado ao FL · requer script X-MIDI.");
+        CommandSent?.Invoke("Use Menu: transporte requer retorno confirmado do FL.");
     }
 
     public void SetSwing(int percent)
@@ -186,7 +216,7 @@ internal sealed class BoomBapPreset : IDisposable
     public void Analog(Gamepad gamepad)
     {
         SetTrigger(gamepad.LeftTrigger);
-        if (!output.IsOpen) return;
+        if (!output.IsOpen || !EffectsPrepared) return;
         if (Settings.Mode == MusicalMode.Sample)
         {
             for (int i = 0; i < Settings.Samples.Effects.Length; i++)
@@ -203,17 +233,32 @@ internal sealed class BoomBapPreset : IDisposable
     private void SendCc(int index, byte cc, short raw, int deadZone)
     {
         int percent = ControllerReader.ThumbPercent(raw, deadZone);
-        int value = (int)Math.Round((percent + 100) * 127.0 / 200);
+        if (percent == 0 || lastCc[index] < 0) return;
+        int value = Math.Clamp(lastCc[index] + (int)Math.Round(percent / 20.0), 0, 127);
         long now = Environment.TickCount64;
         if (value == lastCc[index] || now - lastCcTime[index] < 35) return;
         output.Send(0xB0, cc, (byte)value);
         lastCc[index] = value;
         lastCcTime[index] = now;
     }
+    // Explicit preparation establishes a known value; never performed on connect or mode change.
+    public void PrepareEffects()
+    {
+        if (!output.IsOpen) return;
+        Array.Fill(lastCc, 64);
+        if (Settings.Mode == MusicalMode.Sample)
+        {
+            foreach (var e in Settings.Samples.Effects.Where(e => e.Enabled)) output.Send(0xB0, (byte)e.Cc, 64);
+        }
+        else { output.Send(0xB0, 74, 64); output.Send(0xB0, 91, 64); }
+        EffectsPrepared = true;
+        CommandSent?.Invoke("Efeitos preparados em 64; sticks X ajustam relativamente. Centro mantém valor.");
+    }
     public void Silence()
     {
         ReleaseNotes();
         if (output.IsOpen) output.Send(0xB0, 123, 0);
+        if (output.IsOpen) output.Send(0xB0, 120, 0);
         Reset();
     }
     public void Reset()
@@ -221,6 +266,8 @@ internal sealed class BoomBapPreset : IDisposable
         ReleaseNotes();
         previousChord = [];
         downButtons.Clear();
+        rt = false; EffectsPrepared = false;
+        drums.Trigger(0);
         Array.Fill(lastCc, -1);
         Array.Clear(lastCcTime);
     }

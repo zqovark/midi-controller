@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:XMidi"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="X-MIDI" Width="1040" Height="910" MinWidth="980" MinHeight="880"
+        Title="X-MIDI" Width="900" Height="760" MinWidth="620" MinHeight="460"
         Background="#121212" Foreground="#BEBEBE" FontFamily="Tahoma" FontSize="12" WindowStyle="None" WindowStartupLocation="CenterScreen" UseLayoutRounding="True">
     <shell:WindowChrome.WindowChrome><shell:WindowChrome CaptionHeight="32" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="10" UseAeroCaptionButtons="False"/></shell:WindowChrome.WindowChrome>
     <Window.Resources>
@@ -49,64 +49,48 @@
         <Style TargetType="Slider"><Setter Property="Foreground" Value="#E68E0D"/><Setter Property="Background" Value="#333333"/></Style>
         <Style TargetType="ProgressBar"><Setter Property="Height" Value="7"/><Setter Property="Maximum" Value="100"/><Setter Property="Background" Value="#333333"/><Setter Property="Foreground" Value="#E68E0D"/><Setter Property="BorderThickness" Value="0"/></Style>
     </Window.Resources>
-    <Border Background="{StaticResource Metal}" BorderBrush="#333333" BorderThickness="1" CornerRadius="10" Padding="5">
-    <Border BorderBrush="#090909" BorderThickness="2" CornerRadius="7" Padding="5">
-    <Grid Margin="2">
-        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-        <Grid Margin="3,0,3,8" Height="30">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <TextBlock Text="●  X–MIDI" Foreground="#F59E0B" FontFamily="Consolas" FontWeight="Bold" VerticalAlignment="Center" Margin="4,0,15,0"/>
-            <Border Grid.Column="1" Height="5" VerticalAlignment="Center" BorderBrush="#333333" BorderThickness="0,1" Background="#121212" Margin="0,0,18,0"/>
-            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock x:Name="ControllerStatus" Text="● Aguardando controle" Foreground="#E68E0D" VerticalAlignment="Center" FontSize="11" Margin="0,0,14,0"/>
-                <Button Content="_" Width="24" Padding="0" Height="20" Click="MinimizeClicked" shell:WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Minimizar"/>
-                <Button Content="×" Width="24" Padding="0" Height="20" Margin="4,0,0,0" Click="CloseClicked" shell:WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Fechar"/>
+    <Grid Margin="16">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <DockPanel Margin="0,0,0,12">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <TextBlock x:Name="ControllerStatus" Text="Aguardando controle" VerticalAlignment="Center" Margin="8"/>
+                <Button Content="_" Click="MinimizeClicked" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                <Button Content="×" Click="CloseClicked" Margin="5,0,0,0" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
             </StackPanel>
-        </Grid>
-        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,0,10" Padding="18,14">
-            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="300"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <StackPanel VerticalAlignment="Center"><TextBlock Text="SAÍDA MIDI" Foreground="{StaticResource Muted}" FontSize="10"/><TextBlock x:Name="MidiStatus" Text="Selecione a porta do loopMIDI" Margin="0,5,12,0" FontSize="12" TextTrimming="CharacterEllipsis"/></StackPanel>
-                <ComboBox x:Name="Ports" Grid.Column="1" VerticalAlignment="Center" MinHeight="38" SelectionChanged="PortSelected" AutomationProperties.Name="Porta MIDI de saída"/>
-                <Button Grid.Column="2" Content="Atualizar" Margin="10,0,0,0" Click="RefreshClicked"/>
-                <Button Grid.Column="3" Content="Silenciar" Margin="10,0,0,0" Click="SilenceClicked" ToolTip="Solta as notas e envia All Notes Off"/>
-            </Grid>
-        </Border>
-        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="16,12" Margin="0,0,0,10">
-            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                <Button x:Name="BankButton" Width="126" Margin="0,0,12,0" Click="BankClicked" Background="{StaticResource KeyMetal}" ToolTip="↓ alterna o banco e libera notas anteriores"><TextBlock Foreground="#121212" x:Name="BankLabel" Text="↓ Banco 1" FontWeight="SemiBold"/></Button>
-                <Button Grid.Column="1" Width="144" Margin="0,0,20,0" Content="↑ Play / Pause" Click="PlayPauseClicked" ToolTip="Envia o comando; o estado de reprodução não é recebido do FL"/>
-                <StackPanel Grid.Column="2">
-                    <DockPanel><TextBlock x:Name="SwingValue" Text="SWING GLOBAL · 0%" FontSize="11" Foreground="#BEBEBE"/><TextBlock x:Name="SwingStepLabel" Text="passo 5%" Foreground="{StaticResource Muted}" FontSize="10" HorizontalAlignment="Right"/></DockPanel>
-                    <Grid Margin="0,7,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition/><ColumnDefinition Width="30"/></Grid.ColumnDefinitions>
-                        <Button Content="−" Padding="5,1" Click="SwingDownClicked"/>
-                        <Slider x:Name="SwingSlider" Grid.Column="1" Margin="8,0" Minimum="0" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" ValueChanged="SwingValueChanged" VerticalAlignment="Center" AutomationProperties.Name="Swing global do sequenciador"/>
-                        <Button Grid.Column="2" Content="+" Padding="5,1" Click="SwingUpClicked"/>
-                    </Grid>
+            <TextBlock Text="X–MIDI" Foreground="#E68E0D" FontWeight="Bold" FontSize="20"/>
+        </DockPanel>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel>
+            <Border Style="{StaticResource Card}"><StackPanel>
+                <TextBlock x:Name="PerformanceStatus" FontSize="17" Foreground="#E68E0D" TextWrapping="Wrap"/>
+                <TextBlock x:Name="PerformanceHint" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                <WrapPanel Margin="0,10,0,0">
+                    <Button Content="Menu · Play / Stop" Click="PlayPauseClicked" Margin="0,0,8,8"/>
+                    <Button Content="View · Comandos" Click="PanelClicked" Margin="0,0,8,8"/>
+                    <Button Content="Stop / Silenciar" Click="SilenceClicked" Margin="0,0,8,8"/>
+                    <Button x:Name="BankButton" Click="BankClicked" Margin="0,0,8,8"><TextBlock x:Name="BankLabel" Foreground="#121212"/></Button>
+                </WrapPanel>
+            </StackPanel></Border>
+            <Border x:Name="CommandPanel" Style="{StaticResource Card}" Visibility="Collapsed" Margin="0,10,0,0">
+                <StackPanel>
+                    <TextBlock Text="COMANDOS · ↑/↓ navega · ←/→ escolhe · A confirma · B volta" TextWrapping="Wrap" Foreground="#E68E0D"/>
+                    <ListBox x:Name="CommandList" Background="#121212" Foreground="#BEBEBE" BorderThickness="0" IsHitTestVisible="False" Focusable="False" Margin="0,10,0,0">
+                        <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="6"/></DataTemplate></ListBox.ItemTemplate>
+                    </ListBox>
                 </StackPanel>
-                <StackPanel Grid.Column="3" Margin="20,0,0,0" VerticalAlignment="Center">
-                    <TextBlock x:Name="CommandStatus" Text="Transporte/swing: selecione o script X-MIDI no FL." FontSize="11" TextWrapping="Wrap" Foreground="#8A8A8D"/>
-                    <TextBlock Text="Swing do sequenciador: não altera notas ao vivo nem isola pads do FPC." FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,4,0,0"/>
-                </StackPanel>
+            </Border>
+            <Grid Margin="0,12,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <StackPanel><TextBlock x:Name="MapA" FontSize="16" TextWrapping="Wrap" Margin="4"/><TextBlock x:Name="MapB" FontSize="16" TextWrapping="Wrap" Margin="4"/></StackPanel>
+                <StackPanel Grid.Column="1"><TextBlock x:Name="MapX" FontSize="16" TextWrapping="Wrap" Margin="4"/><TextBlock x:Name="MapY" FontSize="16" TextWrapping="Wrap" Margin="4"/></StackPanel>
             </Grid>
-        </Border>
-        <Grid Grid.Row="3"><Grid.ColumnDefinitions><ColumnDefinition Width="1.9*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-            <Border Style="{StaticResource Card}">
-                <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                    <StackPanel>
-                        <DockPanel>
-                            <ComboBox x:Name="ModeSelector" DockPanel.Dock="Right" Width="145" SelectionChanged="ModeSelectionChanged" AutomationProperties.Name="Modo musical">
-                                <ComboBoxItem Content="Drum Mode"/><ComboBoxItem Content="Sample Mode"/><ComboBoxItem Content="Chord Mode"/>
-                            </ComboBox>
-                            <StackPanel><TextBlock Text="CONTROLE" FontSize="12" FontWeight="SemiBold"/>
-                            <TextBlock x:Name="ModeCaption" Text="Entradas em tempo real" Foreground="{StaticResource Muted}" Margin="0,5,0,0" FontSize="12"/></StackPanel>
-                        </DockPanel>
-                        <local:MusicalModePanel x:Name="ModePanel" Visibility="Collapsed"/>
-                    </StackPanel>
-                    <Viewbox Grid.Row="1" Stretch="Uniform" Margin="0,8">
-                        <Canvas Width="620" Height="370">
+            <TextBlock x:Name="DedicatedReadout" Foreground="#E68E0D" Margin="4,8" TextWrapping="Wrap"/>
+            <WrapPanel><TextBlock x:Name="VelocityReadout" Margin="4,4,20,4"/><TextBlock x:Name="RepeatReadout" Margin="4" Foreground="#E68E0D"/></WrapPanel>
+            <TextBlock Text="Repeat livre · BPM manual · não acompanha a fase do FL" Foreground="#8A8A8D" Margin="4"/>
+            <Viewbox Stretch="Uniform" MaxHeight="270">                        <Canvas Width="620" Height="370">
                             <Path Fill="{StaticResource Metal}" Stroke="#333333" StrokeThickness="2" Data="M 125,65 C 75,65 60,110 43,175 L 15,285 C 5,340 60,358 91,318 L 150,255 L 468,255 L 527,318 C 560,358 615,340 603,285 L 578,175 C 560,110 545,65 495,65 Z"/>
-                            <Border x:Name="LB" Canvas.Left="107" Canvas.Top="46" Width="125" Height="24" Background="#2A2A2A" CornerRadius="8"><TextBlock Text="LB" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11"/></Border>
-                            <Border x:Name="RB" Canvas.Left="388" Canvas.Top="46" Width="125" Height="24" Background="#2A2A2A" CornerRadius="8"><TextBlock Text="RB" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11"/></Border>
+                            <Border x:Name="LB" Canvas.Left="107" Canvas.Top="46" Width="125" Height="24" Background="#2A2A2A" CornerRadius="8"><TextBlock Text="LB · KICK" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11"/></Border>
+                            <Border x:Name="RB" Canvas.Left="388" Canvas.Top="46" Width="125" Height="24" Background="#2A2A2A" CornerRadius="8"><TextBlock Text="RB · REPEAT" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11"/></Border>
                             <TextBlock x:Name="LTLabel" Canvas.Left="110" Canvas.Top="0" Text="LT 0%" Foreground="#8A8A8D"/><ProgressBar x:Name="LTBar" Canvas.Left="110" Canvas.Top="23" Width="120"/>
                             <TextBlock x:Name="RTLabel" Canvas.Left="390" Canvas.Top="0" Text="RT 0%" Foreground="#8A8A8D"/><ProgressBar x:Name="RTBar" Canvas.Left="390" Canvas.Top="23" Width="120"/>
                             <Ellipse Canvas.Left="267" Canvas.Top="85" Width="86" Height="55" Fill="#0D0D0D" Stroke="#333333"/>
@@ -132,56 +116,46 @@
                             <TextBlock x:Name="LeftEffectLabel" Canvas.Left="112" Canvas.Top="325" MaxWidth="225" TextTrimming="CharacterEllipsis" Text="FILTRO · CC 74" Foreground="#E68E0D" FontSize="12"/>
                             <TextBlock x:Name="RightEffectLabel" Canvas.Left="355" Canvas.Top="325" MaxWidth="225" TextTrimming="CharacterEllipsis" Text="EFEITO · CC 91" Foreground="#BEBEBE" FontSize="12"/>
                         </Canvas>
-                    </Viewbox>
-                    <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
-                        <StackPanel><TextBlock Text="ANALÓGICO ESQUERDO" Foreground="{StaticResource Muted}" FontSize="10"/><TextBlock FontFamily="Consolas" x:Name="LeftValues" Text="X 0% · Y 0% · CC 64" Margin="0,7,0,0" FontSize="12"/></StackPanel>
-                        <StackPanel Grid.Column="1"><TextBlock Text="ANALÓGICO DIREITO" Foreground="{StaticResource Muted}" FontSize="10"/><TextBlock FontFamily="Consolas" x:Name="RightValues" Text="X 0% · Y 0% · CC 64" Margin="0,7,0,0" FontSize="12"/></StackPanel>
-                    </Grid>
-                </Grid>
-            </Border>
-            <Grid Grid.Column="2"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="10"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                <Border Style="{StaticResource Card}"><StackPanel>
-                    <TextBlock x:Name="BankDescription" Text="BANCO 1 · CANAL 1" Foreground="#E68E0D" FontSize="10"/>
-                    <TextBlock x:Name="MappingTitle" Text="Mapeamento de notas" FontSize="17" FontWeight="SemiBold" Margin="0,8,0,16"/>
-                    <TextBlock FontFamily="Consolas" FontSize="13" Foreground="#BEBEBE" x:Name="MapA" Text="A · Kick · 36" Margin="0,0,0,9" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock FontFamily="Consolas" FontSize="13" Foreground="#BEBEBE" x:Name="MapB" Text="B · Snare · 38" Margin="0,0,0,9" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock FontFamily="Consolas" FontSize="13" Foreground="#BEBEBE" x:Name="MapX" Text="X · Closed hi-hat · 42" Margin="0,0,0,9" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock FontFamily="Consolas" FontSize="13" Foreground="#BEBEBE" x:Name="MapY" Text="Y · Open hi-hat · 46" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="LT → VELOCITY" FontSize="11" Foreground="#E68E0D" Margin="0,14,0,6"/>
-                    <TextBlock x:Name="VelocityReadout" FontFamily="Consolas" Text="LT 0% · VEL 110"/>
-                    <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
-                        <StackPanel Margin="0,0,8,0"><TextBlock x:Name="DefaultVelocityLabel" FontSize="10"/>
-                            <Slider x:Name="DefaultVelocitySlider" Minimum="1" Maximum="127" Value="110" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="DrumValueChanged" AutomationProperties.Name="Velocity padrão"/></StackPanel>
-                        <StackPanel Grid.Column="1"><TextBlock x:Name="MinimumVelocityLabel" FontSize="10"/>
-                            <Slider x:Name="MinimumVelocitySlider" Minimum="1" Maximum="127" Value="30" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="DrumValueChanged" AutomationProperties.Name="Velocity mínima"/></StackPanel>
-                    </Grid>
-                    <ComboBox x:Name="VelocityCurveSelector" SelectionChanged="DrumSelectionChanged" Margin="0,4,0,8" AutomationProperties.Name="Curva de velocity" ToolTip="Suave: redução gradual no início. Acentuada: redução mais rápida no início.">
-                        <ComboBoxItem Content="Linear"/><ComboBoxItem Content="Suave"/><ComboBoxItem Content="Acentuada"/>
-                    </ComboBox>
-                    <StackPanel x:Name="DrumRepeatControls">
-                    <DockPanel><CheckBox x:Name="RepeatEnabled" Content="NOTE REPEAT" Foreground="#E68E0D" Checked="RepeatEnabledChanged" Unchecked="RepeatEnabledChanged" VerticalAlignment="Center"/>
-                        <ComboBox x:Name="RepeatDivisionSelector" SelectionChanged="DrumSelectionChanged" Margin="10,0,0,0" AutomationProperties.Name="Divisão rítmica">
-                            <ComboBoxItem Content="1/4"/><ComboBoxItem Content="1/8"/><ComboBoxItem Content="1/16"/><ComboBoxItem Content="1/32"/>
-                            <ComboBoxItem Content="1/8T"/><ComboBoxItem Content="1/16T"/><ComboBoxItem Content="1/32T"/>
-                        </ComboBox>
-                    </DockPanel>
-                    <DockPanel Margin="0,7,0,0"><TextBlock x:Name="BpmLabel" FontSize="10" Width="65" VerticalAlignment="Center"/>
-                        <Slider x:Name="BpmSlider" Minimum="20" Maximum="300" Value="120" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="DrumValueChanged" AutomationProperties.Name="BPM manual do Note Repeat"/>
-                    </DockPanel>
-                    <TextBlock x:Name="RepeatReadout" Text="RB + A/B/X/Y" Foreground="#E68E0D" FontFamily="Consolas" Margin="0,6,0,0"/>
-                    <TextBlock Text="BPM manual · início livre, sem sincronismo de grade com FL." FontSize="10" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                    </StackPanel>
-                    <Button Content="Editar mapeamento…" Click="ConfigureClicked" Margin="0,12,0,0" Padding="10,7"/>
-                </StackPanel></Border>
-                <Border Grid.Row="2" Style="{StaticResource Card}" Padding="16"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                    <DockPanel Margin="0,0,0,12"><TextBlock x:Name="MessageCount" DockPanel.Dock="Right" Text="0 enviadas" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock Text="Mensagens MIDI" FontWeight="SemiBold"/></DockPanel>
-                    <ListBox x:Name="Monitor" Grid.Row="1" Background="#121212" BorderBrush="#333333" BorderThickness="2,2,1,1" Padding="5" Foreground="#8A8A8D" FontFamily="Consolas" FontSize="11" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                        <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Foreground="#8A8A8D" TextWrapping="Wrap" Margin="0,2"/></DataTemplate></ListBox.ItemTemplate>
-                    </ListBox>
-                </Grid></Border>
-            </Grid>
-        </Grid>
-        <TextBlock x:Name="SettingsStatus" Grid.Row="4" Text="↑ Play/Pause · ↓ Banco · ←/→ Swing" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,17,0,0" TextWrapping="Wrap"/>
+</Viewbox>
+            <Expander x:Name="Preparation" Header="Preparação / portas / instrumentos / detalhes" Foreground="#E68E0D" Margin="0,10,0,0" Expanded="PreparationOpened">
+            <StackPanel Margin="0,12,0,0">
+                <TextBlock x:Name="MidiStatus" TextWrapping="Wrap"/>
+                <TextBlock Text="Aplicativo → FL (saída)" Margin="0,8,0,4"/>
+                <ComboBox x:Name="Ports" SelectionChanged="PortSelected"/>
+                <TextBlock Text="FL → aplicativo (retorno, porta distinta)" Margin="0,8,0,4"/>
+                <ComboBox x:Name="FeedbackPorts" SelectionChanged="FeedbackSelected"/>
+                <Button Content="Atualizar portas" Click="RefreshClicked" Margin="0,8"/>
+                <TextBlock Text="Canais globais no Channel Rack (contagem a partir de 1): Drum / Sample / Chord" TextWrapping="Wrap"/>
+                <WrapPanel Margin="0,8"><TextBox x:Name="DrumChannel" Width="60"/><TextBox x:Name="SampleChannel" Width="60" Margin="8,0"/><TextBox x:Name="ChordChannel" Width="60"/>
+                    <Button Content="Aplicar canais" Click="ChannelsClicked" Margin="8,0"/></WrapPanel>
+                <CheckBox x:Name="RecordingPrepared" Foreground="#BEBEBE" Checked="RecordingPreparationChanged" Unchecked="RecordingPreparationChanged">
+                    <TextBlock Text="Conferi no FL: Blend ligado, filtro Notes, 4/4, destino nativo e envelopes/cortes dos pads" TextWrapping="Wrap"/>
+                </CheckBox>
+                <TextBlock x:Name="BankDescription" Margin="0,10"/>
+                <TextBlock x:Name="ModeCaption"/><TextBlock x:Name="MappingTitle"/>
+                <ComboBox x:Name="ModeSelector" SelectionChanged="ModeSelectionChanged"><ComboBoxItem Content="Drum Mode"/><ComboBoxItem Content="Sample Mode"/><ComboBoxItem Content="Chord Mode"/></ComboBox>
+                <local:MusicalModePanel x:Name="ModePanel"/>
+                <Button Content="Editar mapeamento…" Click="ConfigureClicked" Margin="0,8"/>
+                <TextBlock x:Name="DefaultVelocityLabel"/><Slider x:Name="DefaultVelocitySlider" Minimum="1" Maximum="127" Value="110" ValueChanged="DrumValueChanged"/>
+                <TextBlock x:Name="MinimumVelocityLabel"/><Slider x:Name="MinimumVelocitySlider" Minimum="1" Maximum="127" Value="30" ValueChanged="DrumValueChanged"/>
+                <ComboBox x:Name="VelocityCurveSelector" SelectionChanged="DrumSelectionChanged"><ComboBoxItem Content="Linear"/><ComboBoxItem Content="Suave"/><ComboBoxItem Content="Acentuada"/></ComboBox>
+                <StackPanel x:Name="DrumRepeatControls" Margin="0,10">
+                    <CheckBox x:Name="RepeatEnabled" Content="NOTE REPEAT" Foreground="#E68E0D" Checked="RepeatEnabledChanged" Unchecked="RepeatEnabledChanged"/>
+                    <ComboBox x:Name="RepeatDivisionSelector" SelectionChanged="DrumSelectionChanged"><ComboBoxItem Content="1/4"/><ComboBoxItem Content="1/8"/><ComboBoxItem Content="1/16"/><ComboBoxItem Content="1/32"/><ComboBoxItem Content="1/8T"/><ComboBoxItem Content="1/16T"/><ComboBoxItem Content="1/32T"/></ComboBox>
+                    <TextBlock x:Name="BpmLabel"/><Slider x:Name="BpmSlider" Minimum="20" Maximum="300" Value="120" ValueChanged="DrumValueChanged"/>
+                </StackPanel>
+                <TextBlock x:Name="SwingValue"/><TextBlock x:Name="SwingStepLabel"/>
+                <Slider x:Name="SwingSlider" Minimum="0" Maximum="100" ValueChanged="SwingValueChanged"/>
+                <TextBlock x:Name="CommandStatus" TextWrapping="Wrap"/>
+                <TextBlock Text="Vincule os CC no FL antes de preparar. Preparar envia 64; depois X ajusta relativamente. Ao trocar modo/conectar, os efeitos ficam desativados." TextWrapping="Wrap" Margin="0,10"/>
+                <Button Content="Preparar efeitos vinculados em 64" Click="EffectsClicked"/>
+                <TextBlock x:Name="LeftValues"/><TextBlock x:Name="RightValues"/>
+                <TextBlock x:Name="MessageCount" Margin="0,10"/>
+                <ListBox x:Name="Monitor" Height="140" Background="#121212" Foreground="#BEBEBE" FontFamily="Consolas"/>
+            </StackPanel>
+            </Expander>
+            <TextBlock x:Name="SettingsStatus" Text="←/→ banco · ↑/↓ Repeat · Menu transporte · View painel / manter 700 ms emergência" TextWrapping="Wrap" Margin="0,12" Foreground="#8A8A8D"/>
+        </StackPanel>
+        </ScrollViewer>
     </Grid>
-    </Border></Border>
 </Window>
